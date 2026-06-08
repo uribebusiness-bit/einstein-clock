@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Einstein Clock — Time Dilation on Your Phone</title>
+  <meta name="description" content="Your head ages faster than your feet. Watch Einstein's General Relativity happen live. Download Einstein Clock on Google Play." />
+  <meta property="og:title" content="Einstein Clock — Watch Time Dilation Happen Live" />
+  <meta property="og:description" content="Your head ages faster than your feet. Einstein's General Relativity, visible on your phone for the first time." />
+  <meta property="og:image" content="screenshots/screen-wide.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600&family=Syncopate:wght@400;700&family=Inconsolata:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #07070c;
+      --gold:     #c9a84c;
+      --gold2:    #8a6f2e;
+      --gold-glow:rgba(201,168,76,0.15);
+      --silver:   #b8c0cc;
+      --text:     #e8e8f0;
+      --dim:      #6a6a8a;
+      --blue:     #4a9eff;
+      --green:    #4ade80;
+      --border:   rgba(255,255,255,0.07);
+      --ff-disp:  'Cormorant Garamond', Georgia, serif;
+      --ff-ui:    'Syncopate', sans-serif;
+      --ff-mono:  'Inconsolata', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--ff-disp);
+      overflow-x: hidden;
+      cursor: crosshair;
+    }
+
+    /* ── CANVAS STARFIELD ── */
+    #star-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.55;
+    }
+
+    /* ── NOISE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    section, header, footer { position: relative; z-index: 2; }
+
+    /* ── HERO ── */
+    #hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 24px;
+      text-align: center;
+      position: relative;
+      background: radial-gradient(ellipse at center, rgba(7,7,12,0.6) 0%, transparent 70%);
+    }
+
+    #hero::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold2), transparent);
+    }
+
+    .hero-eyebrow {
+      font-family: var(--ff-mono);
+      font-size: 11px;
+      letter-spacing: 4px;
+      color: var(--gold2);
+      text-transform: uppercase;
+      margin-bottom: 32px;
+      opacity: 0;
+      animation: fadeUp 1s 0.2s forwards;
+      text-shadow: 0 1px 12px rgba(0,0,0,0.9);
+    }
+
+    .hero-title {
+      font-family: var(--ff-disp);
+      font-size: clamp(52px, 10vw, 110px);
+      font-weight: 300;
+      line-height: 0.95;
+      letter-spacing: -2px;
+      margin-bottom: 16px;
+      opacity: 0;
+      animation: fadeUp 1s 0.4s forwards;
+      text-shadow: 0 2px 40px rgba(0,0,0,0.9), 0 0 80px rgba(0,0,0,0.7);
+    }
+    .hero-title em {
+      font-style: italic;
+      color: var(--gold);
+      font-weight: 300;
+    }
+    .hero-title strong {
+      font-weight: 700;
+      display: block;
+      font-size: clamp(28px, 5vw, 52px);
+      letter-spacing: 2px;
+      color: var(--silver);
+      font-style: normal;
+      margin-top: 8px;
+    }
+
+    .hero-statement {
+      font-family: var(--ff-disp);
+      font-size: clamp(18px, 3vw, 26px);
+      font-weight: 300;
+      font-style: italic;
+      color: var(--dim);
+      max-width: 600px;
+      line-height: 1.5;
+      margin: 24px auto 48px;
+      opacity: 0;
+      animation: fadeUp 1s 0.6s forwards;
+      text-shadow: 0 1px 20px rgba(0,0,0,0.95);
+    }
+    .hero-statement span { color: var(--gold); font-style: normal; }
+
+    /* ── LIVE COUNTER HERO ── */
+    #live-counter {
+      background: rgba(10,10,20,0.8);
+      border: 1px solid var(--gold2);
+      border-radius: 16px;
+      padding: 28px 48px;
+      margin-bottom: 48px;
+      backdrop-filter: blur(10px);
+      opacity: 0;
+      animation: fadeUp 1s 0.8s forwards;
+    }
+    #live-counter .lc-label {
+      font-family: var(--ff-mono);
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--gold2);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    #live-counter .lc-value {
+      font-family: var(--ff-mono);
+      font-size: clamp(28px, 6vw, 48px);
+      color: var(--gold);
+      letter-spacing: 2px;
+    }
+    #live-counter .lc-sub {
+      font-family: var(--ff-mono);
+      font-size: 11px;
+      color: var(--dim);
+      margin-top: 6px;
+      letter-spacing: 2px;
+    }
+
+    /* ── CTA BUTTONS ── */
+    .cta-group {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+      opacity: 0;
+      animation: fadeUp 1s 1s forwards;
+    }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--gold);
+      color: #07070c;
+      font-family: var(--ff-ui);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 16px 32px;
+      border-radius: 4px;
+      text-decoration: none;
+      transition: all 0.3s;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-primary:hover {
+      background: #e8c060;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(201,168,76,0.3);
+    }
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: transparent;
+      color: var(--text);
+      font-family: var(--ff-ui);
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 16px 32px;
+      border-radius: 4px;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      transition: all 0.3s;
+    }
+    .btn-secondary:hover {
+      border-color: var(--gold2);
+      color: var(--gold);
+    }
+
+    /* ── WATCHES SECTION ── */
+    #watches-section {
+      padding: 120px 24px;
+      text-align: center;
+    }
+
+    .section-label {
+      font-family: var(--ff-mono);
+      font-size: 10px;
+      letter-spacing: 5px;
+      color: var(--gold2);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .section-title {
+      font-family: var(--ff-disp);
+      font-size: clamp(36px, 6vw, 72px);
+      font-weight: 300;
+      line-height: 1.1;
+      margin-bottom: 16px;
+      text-shadow: 0 2px 24px rgba(0,0,0,0.8);
+    }
+    .section-title em { font-style: italic; color: var(--gold); }
+    .section-body {
+      font-family: var(--ff-disp);
+      font-size: clamp(16px, 2vw, 20px);
+      font-weight: 300;
+      color: var(--dim);
+      max-width: 560px;
+      margin: 0 auto 64px;
+      line-height: 1.7;
+    }
+
+    /* ── SVG WATCHES ── */
+    .watches-display {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: clamp(20px, 5vw, 80px);
+      flex-wrap: wrap;
+      margin-bottom: 48px;
+    }
+    .watch-unit { text-align: center; }
+    .watch-unit svg { width: clamp(140px, 30vw, 220px); height: clamp(140px, 30vw, 220px); }
+    .watch-unit-label {
+      font-family: var(--ff-mono);
+      font-size: 10px;
+      letter-spacing: 4px;
+      margin-top: 16px;
+      text-transform: uppercase;
+    }
+    .watch-unit-label.gold { color: var(--gold); }
+    .watch-unit-label.silver { color: var(--silver); }
+    .watch-unit-time {
+      font-family: var(--ff-mono);
+      font-size: 18px;
+      margin-top: 6px;
+    }
+    .watch-unit-time.gold { color: var(--gold); }
+    .watch-unit-time.silver { color: var(--silver); }
+
+    .vs-sep {
+      font-family: var(--ff-mono);
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--dim);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 40px;
+    }
+    .vs-sep::before, .vs-sep::after {
+      content: '';
+      width: 1px;
+      height: 40px;
+      background: var(--border);
+    }
+
+    /* ── FEATURES ── */
+    #features {
+      padding: 120px 24px;
+      border-top: 1px solid var(--border);
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2px;
+      max-width: 1100px;
+      margin: 64px auto 0;
+      border: 1px solid var(--border);
+    }
+    .feature-card {
+      padding: 40px 36px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.01);
+      transition: background 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold2), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .feature-card:hover { background: rgba(201,168,76,0.04); }
+    .feature-card:hover::before { opacity: 1; }
+    .feature-icon {
+      font-size: 28px;
+      margin-bottom: 20px;
+      display: block;
+    }
+    .feature-name {
+      font-family: var(--ff-disp);
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    .feature-desc {
+      font-family: var(--ff-disp);
+      font-size: 16px;
+      font-weight: 300;
+      color: var(--dim);
+      line-height: 1.7;
+    }
+
+    /* ── SCIENCE SECTION ── */
+    #science {
+      padding: 120px 24px;
+      border-top: 1px solid var(--border);
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .formula-block {
+      background: rgba(201,168,76,0.06);
+      border: 1px solid var(--gold2);
+      border-radius: 12px;
+      padding: 32px;
+      margin: 48px auto;
+      max-width: 500px;
+    }
+    .formula {
+      font-family: var(--ff-mono);
+      font-size: clamp(18px, 4vw, 28px);
+      color: var(--gold);
+      letter-spacing: 3px;
+      margin-bottom: 12px;
+    }
+    .formula-key {
+      font-family: var(--ff-mono);
+      font-size: 12px;
+      color: var(--dim);
+      letter-spacing: 1px;
+      line-height: 1.8;
+    }
+
+    .science-facts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
+      margin-top: 64px;
+    }
+    .fact-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 24px;
+      text-align: center;
+    }
+    .fact-number {
+      font-family: var(--ff-mono);
+      font-size: clamp(22px, 4vw, 32px);
+      color: var(--gold);
+      display: block;
+      margin-bottom: 8px;
+    }
+    .fact-label {
+      font-family: var(--ff-disp);
+      font-size: 14px;
+      color: var(--dim);
+      line-height: 1.5;
+    }
+
+    /* ── DOWNLOAD CTA ── */
+    #download {
+      padding: 120px 24px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+      position: relative;
+    }
+    #download::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, rgba(201,168,76,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .download-title {
+      font-family: var(--ff-disp);
+      font-size: clamp(42px, 8vw, 96px);
+      font-weight: 300;
+      line-height: 1;
+      margin-bottom: 24px;
+    }
+    .download-title em { font-style: italic; color: var(--gold); }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 24px;
+      text-align: center;
+      font-family: var(--ff-mono);
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--dim);
+      line-height: 2;
+    }
+    footer a { color: var(--gold2); text-decoration: none; }
+    footer a:hover { color: var(--gold); }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* ── TICKER ── */
+    .ticker-wrap {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+      overflow: hidden;
+      white-space: nowrap;
+      background: rgba(201,168,76,0.03);
+    }
+    .ticker-inner {
+      display: inline-flex;
+      animation: ticker 30s linear infinite;
+      gap: 80px;
+    }
+    .ticker-item {
+      font-family: var(--ff-mono);
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: var(--gold2);
+      text-transform: uppercase;
+    }
+    @keyframes ticker {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+
+    @media (max-width: 600px) {
+      #live-counter { padding: 20px 28px; }
+      .cta-group { flex-direction: column; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="star-canvas"></canvas>
+
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker-inner">
+    <span class="ticker-item">Einstein's General Relativity</span>
+    <span class="ticker-item">Time Dilation — Live</span>
+    <span class="ticker-item">Your Head Ages Faster</span>
+    <span class="ticker-item">Confirmed by Atomic Clocks</span>
+    <span class="ticker-item">GPS Satellites Correct 38μs Daily</span>
+    <span class="ticker-item">Patent Pending</span>
+    <span class="ticker-item">Einstein's General Relativity</span>
+    <span class="ticker-item">Time Dilation — Live</span>
+    <span class="ticker-item">Your Head Ages Faster</span>
+    <span class="ticker-item">Confirmed by Atomic Clocks</span>
+    <span class="ticker-item">GPS Satellites Correct 38μs Daily</span>
+    <span class="ticker-item">Patent Pending</span>
+  </div>
+</div>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-eyebrow">Einstein Time Dilation Timepiece</div>
+  <h1 class="hero-title">
+    <em>Time moves differently</em>
+    <strong>for your head and your feet.</strong>
+  </h1>
+  <p class="hero-statement">
+    This is not a theory. It is <span>happening in your body</span> right now,
+    every second of every day. Now you can watch it.
+  </p>
+
+  <div id="live-counter">
+    <div class="lc-label">▲ Head ahead of ▼ feet since you opened this page</div>
+    <div class="lc-value" id="hero-gap">0.000000</div>
+    <div class="lc-sub">nanoseconds &nbsp;·&nbsp; accumulating live</div>
+  </div>
+
+  <div class="cta-group">
+    <a href="https://play.google.com/store/apps/details?id=com.einsteintimepiece.app" class="btn-primary">
+      ▶ &nbsp; Download on Google Play
+    </a>
+    <a href="/app" class="btn-secondary">
+      ◉ &nbsp; Open Web App
+    </a>
+  </div>
+</section>
+
+<!-- WATCHES -->
+<section id="watches-section">
+  <div class="section-label">How it works</div>
+  <h2 class="section-title reveal">Two clocks.<br><em>One body.</em></h2>
+  <p class="section-body reveal">
+    Both watches show real current time. But the head watch runs fractionally faster —
+    accumulating a gap that grows every second you're alive.
+  </p>
+
+  <div class="watches-display reveal">
+    <div class="watch-unit">
+      <svg id="svg-head" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="100" cy="100" r="96" fill="#12121a" stroke="#c9a84c" stroke-width="2.5"/>
+        <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(201,168,76,0.15)" stroke-width="0.5"/>
+        <g id="head-marks"></g>
+        <line id="lh-hour" x1="100" y1="100" x2="100" y2="50" stroke="#c9a84c" stroke-width="4" stroke-linecap="round"/>
+        <line id="lh-min"  x1="100" y1="100" x2="100" y2="32" stroke="#e8e8f0" stroke-width="2.5" stroke-linecap="round"/>
+        <line id="lh-sec"  x1="100" y1="112" x2="100" y2="22" stroke="#ff6b6b" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="100" cy="100" r="5" fill="#c9a84c"/>
+        <circle cx="100" cy="100" r="2" fill="#07070c"/>
+      </svg>
+      <div class="watch-unit-label gold">▲ Head</div>
+      <div class="watch-unit-time gold" id="dig-head-land">--:--:--</div>
+    </div>
+
+    <div class="vs-sep">VS</div>
+
+    <div class="watch-unit">
+      <svg id="svg-feet" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="100" cy="100" r="96" fill="#0e0e18" stroke="#b8c0cc" stroke-width="2.5"/>
+        <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(184,192,204,0.15)" stroke-width="0.5"/>
+        <g id="feet-marks"></g>
+        <line id="lf-hour" x1="100" y1="100" x2="100" y2="50" stroke="#b8c0cc" stroke-width="4" stroke-linecap="round"/>
+        <line id="lf-min"  x1="100" y1="100" x2="100" y2="32" stroke="#e8e8f0" stroke-width="2.5" stroke-linecap="round"/>
+        <line id="lf-sec"  x1="100" y1="112" x2="100" y2="22" stroke="#4a9eff" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="100" cy="100" r="5" fill="#b8c0cc"/>
+        <circle cx="100" cy="100" r="2" fill="#07070c"/>
+      </svg>
+      <div class="watch-unit-label silver">▼ Feet</div>
+      <div class="watch-unit-time silver" id="dig-feet-land">--:--:--</div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div style="max-width:1100px;margin:0 auto;text-align:center">
+    <div class="section-label reveal">Features</div>
+    <h2 class="section-title reveal">Everything you need<br><em>to feel the universe.</em></h2>
+  </div>
+  <div class="features-grid">
+    <div class="feature-card reveal">
+      <span class="feature-icon">⏱</span>
+      <div class="feature-name">Live Dilation Counter</div>
+      <div class="feature-desc">Watch the nanoseconds accumulate in real time. The gap grows every second you're alive.</div>
+    </div>
+    <div class="feature-card reveal">
+      <span class="feature-icon">🧬</span>
+      <div class="feature-name">Your Lifetime Gap</div>
+      <div class="feature-desc">Enter your age and discover exactly how much older your head already is than your feet across your entire life.</div>
+    </div>
+    <div class="feature-card reveal">
+      <span class="feature-icon">📍</span>
+      <div class="feature-name">GPS Altitude Aware</div>
+      <div class="feature-desc">The higher you are, the faster time moves. GPS detects your elevation and adjusts the dilation rate live.</div>
+    </div>
+    <div class="feature-card reveal">
+      <span class="feature-icon">🌍</span>
+      <div class="feature-name">Landmark Comparisons</div>
+      <div class="feature-desc">Your gap vs. GPS satellite corrections, Mt. Everest, the speed of light, and an 80-year human lifespan.</div>
+    </div>
+    <div class="feature-card reveal">
+      <span class="feature-icon">🧠</span>
+      <div class="feature-name">Einstein's Explanation</div>
+      <div class="feature-desc">Plain-language science. The mathematics. The NIST experiments. The proof — in your pocket.</div>
+    </div>
+    <div class="feature-card reveal">
+      <span class="feature-icon">↗</span>
+      <div class="feature-name">Share Your Gap</div>
+      <div class="feature-desc">Generate a personal dilation card with your exact numbers and share it with the world.</div>
+    </div>
+    <div class="feature-card reveal">
+      <span class="feature-icon">🌌</span>
+      <div class="feature-name">Time Dilation Simulator</div>
+      <div class="feature-desc">Drag a slider from Earth to a black hole and watch the clocks separate live. Earth, Everest, ISS, Moon, Mars, and beyond.</div>
+    </div>
+    <div class="feature-card reveal">
+      <span class="feature-icon">⚛</span>
+      <div class="feature-name">Daily Relativity Fact</div>
+      <div class="feature-desc">A new Einstein fact every day — from GPS satellites to black holes to the NIST experiments. A reason to come back tomorrow.</div>
+    </div>
+    <div class="feature-card reveal">
+      <span class="feature-icon">🏆</span>
+      <div class="feature-name">Achievements</div>
+      <div class="feature-desc">10 collectible milestones — from your first nanosecond to a 7-day streak. Track your personal journey through spacetime.</div>
+    </div>
+    <div class="feature-card reveal">
+      <span class="feature-icon">⚡</span>
+      <div class="feature-name">Freeze Time</div>
+      <div class="feature-desc">A nanosecond counter blasts upward — tap to freeze it exactly on the target. Gets faster every round. One more try, always.</div>
+    </div>
+    <div class="feature-card reveal">
+      <span class="feature-icon">🧬</span>
+      <div class="feature-name">Your Time Creature</div>
+      <div class="feature-desc">A living creature that evolves with your daily streak — from a Quantum Speck to an Einstein Dragon. Come back tomorrow to watch it grow.</div>
+    </div>
+  </div>
+</section>
+
+<!-- SCIENCE -->
+<section id="science">
+  <div class="section-label reveal">The Science</div>
+  <h2 class="section-title reveal">Proven by<br><em>atomic clocks.</em></h2>
+  <p class="section-body reveal">
+    In 2010, physicists at NIST confirmed gravitational time dilation across just
+    33 centimeters — less than your forearm. This app shows you your personal
+    piece of that experiment, happening right now.
+  </p>
+
+  <div class="formula-block reveal">
+    <div class="formula">Δt = (gh/c²) × t</div>
+    <div class="formula-key">
+      g = gravitational acceleration (9.8 m/s²)<br>
+      h = height difference (head to feet)<br>
+      c = speed of light (299,792,458 m/s)<br>
+      t = elapsed time
+    </div>
+  </div>
+
+  <div class="science-facts reveal">
+    <div class="fact-card">
+      <span class="fact-number">38 μs</span>
+      <span class="fact-label">GPS satellites correct for time dilation every single day</span>
+    </div>
+    <div class="fact-card">
+      <span class="fact-number">33 cm</span>
+      <span class="fact-label">Height separation at which NIST confirmed the effect in 2010</span>
+    </div>
+    <div class="fact-card">
+      <span class="fact-number">~500 ns</span>
+      <span class="fact-label">How much older your head is than your feet over an 80-year lifetime</span>
+    </div>
+    <div class="fact-card">
+      <span class="fact-number">1915</span>
+      <span class="fact-label">Year Einstein published General Relativity and predicted this effect</span>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOAD -->
+<section id="download">
+  <div class="section-label reveal">Get the app</div>
+  <h2 class="download-title reveal">
+    The universe<br>as it <em>actually is.</em>
+  </h2>
+  <p class="section-body reveal" style="margin-bottom:48px">
+    Free download. No ads. No tracking. Just Einstein's physics, live in your body.
+  </p>
+  <div class="cta-group reveal">
+    <a href="https://play.google.com/store/apps/details?id=com.einsteintimepiece.app" class="btn-primary">
+      ▶ &nbsp; Google Play
+    </a>
+    <a href="/app" class="btn-secondary">
+      ◉ &nbsp; Open Web App
+    </a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div style="margin-bottom:16px">
+    EINSTEIN TIME DILATION TIMEPIECE &nbsp;·&nbsp; US PROV. PAT. APP. No. 64/080,303 &nbsp;·&nbsp; © 2026 LUIS URIBE
+  </div>
+  <div>
+    <a href="/app">Web App</a> &nbsp;·&nbsp;
+    <a href="/privacy.html">Privacy Policy</a> &nbsp;·&nbsp;
+    <a href="mailto:Uribebusiness@gmail.com">Contact</a>
+  </div>
+</footer>
+
+<script>
+// ── STARFIELD ──────────────────────────────────────────────────────
+const canvas = document.getElementById('star-canvas');
+const ctx = canvas.getContext('2d');
+let stars = [];
+
+function resize() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+for (let i = 0; i < 200; i++) {
+  stars.push({
+    x: Math.random(),
+    y: Math.random(),
+    r: Math.random() * 1.5,
+    a: Math.random() * 0.7 + 0.1,
+    speed: Math.random() * 0.0001 + 0.00002
+  });
+}
+
+function drawStars() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  stars.forEach(s => {
+    s.a += Math.sin(Date.now() * s.speed) * 0.002;
+    ctx.beginPath();
+    ctx.arc(s.x * canvas.width, s.y * canvas.height, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${Math.max(0.05, Math.min(0.8, s.a))})`;
+    ctx.fill();
+  });
+  requestAnimationFrame(drawStars);
+}
+drawStars();
+
+// ── CLOCK MARKS ────────────────────────────────────────────────────
+function drawMarks(gId, color) {
+  const g = document.getElementById(gId);
+  for (let i = 0; i < 60; i++) {
+    const angle = (i / 60) * 2 * Math.PI - Math.PI / 2;
+    const isH = i % 5 === 0;
+    const r1 = isH ? 76 : 82, r2 = 88;
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', 100 + r1*Math.cos(angle));
+    line.setAttribute('y1', 100 + r1*Math.sin(angle));
+    line.setAttribute('x2', 100 + r2*Math.cos(angle));
+    line.setAttribute('y2', 100 + r2*Math.sin(angle));
+    line.setAttribute('stroke', color);
+    line.setAttribute('stroke-width', isH ? '2' : '0.8');
+    line.setAttribute('stroke-opacity', isH ? '0.8' : '0.3');
+    g.appendChild(line);
+  }
+}
+drawMarks('head-marks','#c9a84c');
+drawMarks('feet-marks','#b8c0cc');
+
+// ── PHYSICS ────────────────────────────────────────────────────────
+const G = 9.80665, C = 299792458, FT_TO_M = 0.3048;
+const hDiff = 5.8 * FT_TO_M;
+const altM  = 46 * FT_TO_M;
+const rate  = (G * hDiff * (1 - 2*altM/6371000)) / (C*C) * 1e9; // ns/s
+
+let gapNs = 0, lastTs = null, pageStart = performance.now();
+
+function setHand(id, deg, isSecond) {
+  const el = document.getElementById(id);
+  const rad = (deg - 90) * Math.PI / 180;
+  const len = isSecond ? 72 : id.includes('hour') ? 50 : 64;
+  el.setAttribute('x2', 100 + len*Math.cos(rad));
+  el.setAttribute('y2', 100 + len*Math.sin(rad));
+  if (isSecond) {
+    el.setAttribute('x1', 100 - 16*Math.cos(rad));
+    el.setAttribute('y1', 100 - 16*Math.sin(rad));
+  }
+}
+
+function fmt(ns) {
+  if (ns < 1000) return ns.toFixed(6);
+  if (ns < 1e6)  return (ns/1000).toFixed(6) + ' μs';
+  return (ns/1e6).toFixed(6) + ' ms';
+}
+
+function fmtTime(d) {
+  const h = d.getHours(), ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return String(h12).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0') + ' ' + ampm;
+}
+
+function tick(ts) {
+  if (lastTs) gapNs += rate * (ts - lastTs) / 1000;
+  lastTs = ts;
+
+  const now  = new Date();
+  const head = new Date(now.getTime() + gapNs/1e6);
+
+  // Hero counter
+  document.getElementById('hero-gap').textContent = fmt(gapNs);
+
+  // Digital
+  document.getElementById('dig-head-land').textContent = fmtTime(head);
+  document.getElementById('dig-feet-land').textContent = fmtTime(now);
+
+  // Hands
+  const fS = now.getSeconds() + now.getMilliseconds()/1000;
+  const fM = now.getMinutes() + fS/60;
+  const fH = (now.getHours()%12) + fM/60;
+  const hS = head.getSeconds() + head.getMilliseconds()/1000;
+  const hM = head.getMinutes() + hS/60;
+  const hH = (head.getHours()%12) + hM/60;
+
+  setHand('lh-hour', hH/12*360, false);
+  setHand('lh-min',  hM/60*360, false);
+  setHand('lh-sec',  hS/60*360, true);
+  setHand('lf-hour', fH/12*360, false);
+  setHand('lf-min',  fM/60*360, false);
+  setHand('lf-sec',  fS/60*360, true);
+
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+// ── SCROLL REVEAL ──────────────────────────────────────────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) {
+      setTimeout(() => e.target.classList.add('visible'), i * 80);
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(()=>{}); });
+}
+</script>
+</body>
+</html>

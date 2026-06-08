@@ -1,0 +1,34 @@
+{
+  "type": "AdaptiveCard",
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "Einstein Clock",
+      "weight": "Bolder",
+      "size": "Medium",
+      "color": "Warning"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Head ahead of feet by:",
+      "size": "Small",
+      "isSubtle": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "${gap} ns",
+      "weight": "Bolder",
+      "size": "ExtraLarge",
+      "color": "Warning"
+    },
+    {
+      "type": "TextBlock",
+      "text": "Einstein's General Relativity — live in your body",
+      "size": "Small",
+      "isSubtle": true,
+      "wrap": true
+    }
+  ]
+}

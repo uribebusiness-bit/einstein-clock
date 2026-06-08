@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Einstein Clock — Offline</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0a0f;
+      color: #e8e8f0;
+      font-family: 'Inconsolata', 'Courier New', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 32px 24px;
+    }
+    .icon { font-size: 64px; margin-bottom: 24px; opacity: 0.6; }
+    h1 {
+      font-size: 22px;
+      font-weight: 400;
+      color: #c9a84c;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+    }
+    p {
+      font-size: 14px;
+      color: #7a7a9a;
+      line-height: 1.7;
+      max-width: 320px;
+      margin-bottom: 8px;
+    }
+    .fact {
+      margin-top: 32px;
+      background: rgba(201,168,76,0.06);
+      border: 1px solid rgba(201,168,76,0.2);
+      border-radius: 12px;
+      padding: 20px 24px;
+      max-width: 360px;
+    }
+    .fact-label {
+      font-size: 9px;
+      letter-spacing: 3px;
+      color: #8a6f2e;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .fact-text {
+      font-family: Georgia, serif;
+      font-size: 15px;
+      font-style: italic;
+      color: #e8e8f0;
+      line-height: 1.6;
+    }
+    .retry-btn {
+      margin-top: 32px;
+      background: none;
+      border: 1px solid #8a6f2e;
+      border-radius: 8px;
+      color: #c9a84c;
+      font-family: 'Inconsolata', monospace;
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 10px 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .retry-btn:hover { background: rgba(201,168,76,0.1); }
+    .note { margin-top: 16px; font-size: 11px; color: #4a4a6a; letter-spacing: 1px; }
+  </style>
+</head>
+<body>
+  <div class="icon">🕰️</div>
+  <h1>No Connection</h1>
+  <p>Time dilation is still happening in your body — we just can't show it right now.</p>
+  <p>Connect to the internet and try again.</p>
+
+  <div class="fact">
+    <div class="fact-label">⚛ While you wait</div>
+    <div class="fact-text">"Time is an illusion. But your head is still aging faster than your feet."</div>
+  </div>
+
+  <button class="retry-btn" onclick="window.location.reload()">↻ Try Again</button>
+  <div class="note">Once loaded once, the app works fully offline.</div>
+</body>
+</html>

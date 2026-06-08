@@ -3,8 +3,8 @@
   "name": "Einstein Time Dilation Timepiece",
   "short_name": "Einstein Clock",
   "description": "Experience Einstein's General Relativity in real time. Two analog watches show your head clock running faster than your feet clock — proven physics, happening in your body right now.",
-  "start_url": "/app.html",
-  "scope": "/",
+  "start_url": "/einstein-clock/app.html",
+  "scope": "/einstein-clock/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "tabbed", "standalone", "minimal-ui", "browser"],
   "tab_strip": {

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script>
+    // GitHub Pages 404 redirect fix
+    const path = window.location.pathname;
+    const base = '/einstein-clock';
+    if (path === base + '/app' || path === '/app') {
+      window.location.replace(base + '/app.html');
+    } else {
+      window.location.replace(base + '/');
+    }
+  </script>
+</head>
+<body></body>
+</html>

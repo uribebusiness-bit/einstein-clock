@@ -1,15 +1,19 @@
-const CACHE_NAME = 'etdt-v6';
+const CACHE_NAME = 'etdt-v7';
 const ASSETS = [
-  '/', '/app.html', '/offline.html', '/manifest.json',
-  '/icons/icon-192.png', '/icons/icon-192-maskable.png',
-  '/icons/icon-512.png', '/icons/icon-512-maskable.png',
-  '/widgets/clock-widget.json', '/widgets/clock-data.json'
+  './', './app.html', './offline.html', './manifest.json',
+  './icons/icon-192.png', './icons/icon-192-maskable.png',
+  './icons/icon-512.png', './icons/icon-512-maskable.png',
+  './widgets/clock-widget.json', './widgets/clock-data.json'
 ];
 
 // ── INSTALL ───────────────────────────────────────────────────────
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then(cache =>
+      // Cache each asset individually so one missing file can't
+      // break the entire offline installation
+      Promise.allSettled(ASSETS.map(a => cache.add(a)))
+    )
   );
   self.skipWaiting();
 });
@@ -29,7 +33,9 @@ self.addEventListener('fetch', e => {
   // Only handle GET requests for navigation (HTML pages)
   if (e.request.mode === 'navigate') {
     e.respondWith(
-      fetch(e.request).catch(() => caches.match('/offline.html'))
+      fetch(e.request).catch(() =>
+        caches.match(e.request).then(c => c || caches.match('./offline.html'))
+      )
     );
     return;
   }
@@ -42,7 +48,7 @@ self.addEventListener('fetch', e => {
         }
         return resp;
       })
-      .catch(() => caches.match('/offline.html'))
+      .catch(() => caches.match('./offline.html'))
     )
   );
 });
@@ -59,8 +65,8 @@ self.addEventListener('periodicsync', e => {
   if (e.tag === 'update-check') {
     e.waitUntil(
       caches.open(CACHE_NAME).then(cache =>
-        fetch('/app.html')
-          .then(resp => cache.put('/app.html', resp))
+        fetch('./app.html')
+          .then(resp => cache.put('./app.html', resp))
           .catch(() => {})
       )
     );
@@ -75,11 +81,11 @@ self.addEventListener('push', e => {
   e.waitUntil(
     self.registration.showNotification(data.title || 'Einstein Clock', {
       body: data.body || 'Your head is still aging faster than your feet.',
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192-maskable.png',
+      icon: './icons/icon-192.png',
+      badge: './icons/icon-192-maskable.png',
       tag: 'etdt-notification',
       renotify: false,
-      data: { url: '/app.html' }
+      data: { url: './app.html' }
     })
   );
 });
@@ -93,7 +99,7 @@ self.addEventListener('notificationclick', e => {
         if (client.url.includes(self.location.origin) && 'focus' in client)
           return client.focus();
       }
-      return clients.openWindow('/app.html');
+      return clients.openWindow('./app.html');
     })
   );
 });

@@ -467,7 +467,7 @@
       <div class="pro-gate-icon">🧬</div>
       <div class="pro-gate-text">Your Lifetime Gap</div>
       <div class="pro-gate-price">EINSTEIN CLOCK PRO</div>
-      <button class="pro-gate-btn">Unlock for $0.99</button>
+      <button class="pro-gate-btn">Unlock for $1.99</button>
     </div>
     <div class="pro-blurred">
       <div id="lifetime-label">Your Lifetime Dilation Gap</div>
@@ -482,7 +482,7 @@
       <div class="pro-gate-icon">🌍</div>
       <div class="pro-gate-text">Landmark Comparisons</div>
       <div class="pro-gate-price">EINSTEIN CLOCK PRO</div>
-      <button class="pro-gate-btn">Unlock for $0.99</button>
+      <button class="pro-gate-btn">Unlock for $1.99</button>
     </div>
     <div class="pro-blurred">
       <div id="landmark-title">What Your Gap Compares To</div>
@@ -695,7 +695,7 @@
     <div class="share-stat" id="sc-gap">0.000000</div>
     <div class="share-stat-label">nanoseconds — my head is older than my feet</div>
     <div class="share-fact" id="sc-fact">Open the app to generate your personal dilation data.</div>
-    <div class="share-patent">uribebusiness-bit.github.io/einstein-clock</div>
+    <div class="share-patent">Get it on Google Play · Einstein Clock</div>
     <div class="share-actions">
       <button class="btn share-btn" id="copy-share-btn">📋 Copy Text</button>
       <button class="btn" id="close-share-btn">Close</button>
@@ -718,12 +718,12 @@
       <div class="pro-feature-item"><div class="pro-feature-check">★</div><div class="pro-feature-text">Share Your Gap<span>Generate a personal dilation card and share your exact numbers</span></div></div>
     </div>
     <div class="pro-price-block">
-      <div class="pro-price">$0.99</div>
+      <div class="pro-price">$1.99</div>
       <div class="pro-price-label">One-time · No subscription · No ads</div>
     </div>
     <button class="pro-buy-btn" id="pro-buy-btn">Unlock Einstein Clock Pro</button>
     <button class="pro-restore-btn" id="pro-restore-btn">Restore previous purchase</button>
-    <div class="pro-modal-note">Payment processed securely by Google Play.<br>Purchase unlocks Pro permanently on this device.<br>Web and Play Store purchases are separate.</div>
+    <div class="pro-modal-note">Payment processed securely by Google Play.<br>Purchase is linked to your Google account —<br>restore anytime, on any device.</div>
   </div>
 </div>
 
@@ -736,6 +736,85 @@ const FT_TO_M = 0.3048, NS_PER_S = 1e9, EVEREST_M = 8849;
 
 // ── PRO STATE ──────────────────────────────────────────────────────
 let isPro = localStorage.getItem('einstein_pro') === 'true';
+
+// ── GOOGLE PLAY BILLING (Digital Goods API) ───────────────────────
+const PRO_SKU = 'pro_upgrade';
+const PLAY_BILLING_URL = 'https://play.google.com/billing';
+const PLAY_STORE_LISTING = 'https://play.google.com/store/apps/details?id=com.einsteintimepiece.app';
+
+function playBillingAvailable() {
+  return 'getDigitalGoodsService' in window && 'PaymentRequest' in window;
+}
+
+async function getPlayBillingService() {
+  try { return await window.getDigitalGoodsService(PLAY_BILLING_URL); }
+  catch { return null; }
+}
+
+// Fetch the localized price and show it in the modal
+async function refreshProPrice() {
+  if (!playBillingAvailable()) return;
+  try {
+    const service = await getPlayBillingService();
+    if (!service) return;
+    const details = await service.getDetails([PRO_SKU]);
+    if (details && details.length > 0) {
+      const p = details[0].price; // { currency, value }
+      const priceStr = new Intl.NumberFormat(undefined, { style: 'currency', currency: p.currency }).format(p.value);
+      const priceEl = document.getElementById('pro-buy-btn');
+      if (priceEl) priceEl.textContent = `Unlock Einstein Clock Pro — ${priceStr}`;
+      // Keep the locked-feature gates and modal price in sync with the live store price
+      document.querySelectorAll('.pro-gate-btn').forEach(b => { b.textContent = `Unlock for ${priceStr}`; });
+      const priceBlock = document.querySelector('.pro-price');
+      if (priceBlock) priceBlock.textContent = priceStr;
+    }
+  } catch {}
+}
+
+// Real purchase flow through Google Play
+async function buyProWithPlay() {
+  try {
+    const service = await getPlayBillingService();
+    if (!service) { showToast('Google Play Billing unavailable'); return; }
+    const details = await service.getDetails([PRO_SKU]);
+    if (!details || details.length === 0) { showToast('Product not available yet — try again later'); return; }
+    const request = new PaymentRequest(
+      [{ supportedMethods: PLAY_BILLING_URL, data: { sku: PRO_SKU } }],
+      { total: { label: 'Einstein Clock Pro', amount: { currency: details[0].price.currency, value: details[0].price.value } } }
+    );
+    const response = await request.show();
+    await response.complete('success');
+    unlockPro();
+  } catch (err) {
+    // User cancelled or payment failed — fail quietly with a gentle toast
+    if (err && err.name !== 'AbortError') showToast('Purchase not completed');
+  }
+}
+
+// Real restore — asks Google Play for past purchases on this account
+async function restoreProFromPlay(silent) {
+  try {
+    const service = await getPlayBillingService();
+    if (!service) { if (!silent) showToast('Google Play Billing unavailable'); return false; }
+    const purchases = await service.listPurchases();
+    const owned = purchases && purchases.some(p => p.itemId === PRO_SKU);
+    if (owned) {
+      if (!isPro) unlockPro(); else if (!silent) showToast('Pro already active!');
+      return true;
+    }
+    if (!silent) showToast('No previous purchase found');
+    return false;
+  } catch {
+    if (!silent) showToast('Could not check purchases');
+    return false;
+  }
+}
+
+// On startup inside the Play app: silently re-verify ownership.
+// Restores Pro after reinstall, new device, or cleared data.
+if (playBillingAvailable()) {
+  window.addEventListener('load', () => { restoreProFromPlay(true); refreshProPrice(); });
+}
 
 function openProModal() { document.getElementById('pro-modal').classList.add('open'); }
 function closeProModal() { document.getElementById('pro-modal').classList.remove('open'); }
@@ -833,6 +912,11 @@ function checkMilestones() {
     document.getElementById('gap-block').classList.add('milestone-flash');
     setTimeout(() => document.getElementById('gap-block').classList.remove('milestone-flash'), 1000);
     nextMilestone++;
+    // One-time gentle Pro discovery hint at the first milestone (never repeats)
+    if (!isPro && !localStorage.getItem('ec_pro_hint_shown')) {
+      localStorage.setItem('ec_pro_hint_shown', 'true');
+      setTimeout(() => showToast('★ Pro shows your LIFETIME gap — since the day you were born'), 1600);
+    }
   }
 }
 
@@ -1008,18 +1092,29 @@ function handleShare() {
 
 // ── EVENT LISTENERS ────────────────────────────────────────────────
 document.getElementById('pro-buy-btn').addEventListener('click', () => {
-  if (confirm('Purchase Einstein Clock Pro for $0.99?\n\n(In the Play Store app, this triggers secure Google Play payment)')) unlockPro();
+  if (playBillingAvailable()) {
+    buyProWithPlay();
+  } else {
+    // Plain web browser (not the Play Store app) — direct to Play for purchase
+    showToast('Get the app on Google Play to upgrade');
+    window.open(PLAY_STORE_LISTING, '_blank');
+  }
 });
 document.getElementById('pro-restore-btn').addEventListener('click', () => {
-  if (localStorage.getItem('einstein_pro')==='true') { unlockPro(); showToast('Purchase restored!'); }
-  else showToast('No previous purchase found');
+  if (playBillingAvailable()) {
+    restoreProFromPlay(false);
+  } else if (localStorage.getItem('einstein_pro') === 'true') {
+    unlockPro(); showToast('Purchase restored!');
+  } else {
+    showToast('No previous purchase found');
+  }
 });
 document.getElementById('pro-modal-close').addEventListener('click', closeProModal);
 document.getElementById('pro-modal').addEventListener('click', e => { if(e.target===document.getElementById('pro-modal')) closeProModal(); });
 document.getElementById('share-close').addEventListener('click', () => document.getElementById('share-modal').classList.remove('open'));
 document.getElementById('close-share-btn').addEventListener('click', () => document.getElementById('share-modal').classList.remove('open'));
 document.getElementById('copy-share-btn').addEventListener('click', async () => {
-  const text = `🕰️ Einstein Time Dilation Timepiece\n\nMy head clock is ${formatNs(dilationGapNs)} ahead of my feet.\nAt ${Math.round(userAltitudeFt)} ft, my head ages ${(calcDilationRate()*3600).toFixed(6)} ns/hr faster.\n\nuribebusiness-bit.github.io/einstein-clock\nUS Prov. Pat. App. No. 64/080,303`;
+  const text = `🕰️ Einstein Time Dilation Timepiece\n\nMy head clock is ${formatNs(dilationGapNs)} ahead of my feet.\nAt ${Math.round(userAltitudeFt)} ft, my head ages ${(calcDilationRate()*3600).toFixed(6)} ns/hr faster.\n\nGet it on Google Play: play.google.com/store/apps/details?id=com.einsteintimepiece.app\nUS Prov. Pat. App. No. 64/080,303`;
   if (navigator.share) { try { await navigator.share({title:'Einstein Time Dilation Timepiece',text}); showToast('Shared!'); } catch{} }
   else { try { await navigator.clipboard.writeText(text); showToast('Copied!'); } catch{ showToast('Copy failed'); } }
 });

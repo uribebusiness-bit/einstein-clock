@@ -2234,8 +2234,8 @@ document.getElementById('ach-toggle').addEventListener('click', () => {
 
 // ── INIT ───────────────────────────────────────────────────────────
 requestWakeLock();
-if (isPro) applyProState();
 loadSettings();
+if (isPro) applyProState();
 requestAnimationFrame(tick);
 
 // Rotate fun facts — delay 3s so gap has time to accumulate first

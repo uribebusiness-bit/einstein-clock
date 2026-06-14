@@ -840,8 +840,16 @@ async function buyProWithPlay() {
       [{ supportedMethods: PLAY_BILLING_URL, data: { sku: PRO_SKU } }],
       { total: { label: 'Einstein Clock Pro', amount: { currency: details[0].price.currency, value: details[0].price.value } } }
     );
-    const response = await request.show();
+ const response = await request.show();
+    const token = (response.details && (response.details.token || response.details.purchaseToken)) || null;
     await response.complete('success');
+    // Acknowledge the purchase so Google Play doesn't auto-refund it
+    try {
+      if (token) {
+        if ('acknowledge' in service) { await service.acknowledge(token, 'onetime'); }
+        else if ('consume' in service) { await service.consume(token); }
+      }
+    } catch (e) {}
     unlockPro();
   } catch (err) {
     // User cancelled or payment failed — fail quietly with a gentle toast

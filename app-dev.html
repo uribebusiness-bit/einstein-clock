@@ -1,0 +1,2515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Einstein Clock" />
+  <meta name="description" content="Experience Einstein's time dilation in real time. Your head ages faster than your feet." />
+  <title>Einstein Time Dilation Timepiece</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Rajdhani:wght@300;400;500;600&family=Inconsolata:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #0a0a0f;
+      --surface:   #12121a;
+      --panel:     #1a1a26;
+      --border:    rgba(255,255,255,0.08);
+      --gold:      #c9a84c;
+      --gold-dim:  #8a6f2e;
+      --gold-glow: rgba(201,168,76,0.25);
+      --silver:    #b8c0cc;
+      --blue:      #4a9eff;
+      --blue-dim:  rgba(74,158,255,0.15);
+      --red:       #ff6b6b;
+      --green:     #4ade80;
+      --text:      #e8e8f0;
+      --text-dim:  #7a7a9a;
+      --font-disp: 'Playfair Display', serif;
+      --font-ui:   'Rajdhani', sans-serif;
+      --font-mono: 'Inconsolata', monospace;
+    }
+    html, body { background: var(--bg); color: var(--text); font-family: var(--font-ui); min-height: 100vh; overflow-x: hidden; }
+    /* Edge-to-edge: respect Android 15 system bar insets */
+    #app { padding-bottom: max(60px, env(safe-area-inset-bottom, 60px)); padding-top: env(safe-area-inset-top, 0px); }
+    footer { padding-bottom: max(10px, env(safe-area-inset-bottom, 10px)); }
+
+    /* ── STARFIELD ── */
+    #starfield { position: fixed; inset: 0; z-index: 0;
+      background: radial-gradient(ellipse at 20% 50%, rgba(30,20,60,0.4) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 20%, rgba(20,30,60,0.3) 0%, transparent 50%), var(--bg); }
+    #starfield::after { content: ''; position: absolute; inset: 0;
+      background-image: radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.6) 0%, transparent 100%),
+        radial-gradient(1px 1px at 25% 45%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,0.5) 0%, transparent 100%),
+        radial-gradient(1px 1px at 55% 25%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 70% 60%, rgba(255,255,255,0.6) 0%, transparent 100%),
+        radial-gradient(1px 1px at 85% 35%, rgba(255,255,255,0.4) 0%, transparent 100%); }
+
+    #app { position: relative; z-index: 1; max-width: 520px; margin: 0 auto; padding: 0 0 60px; }
+
+    /* ── HEADER ── */
+    header { text-align: center; padding: 20px 20px 14px; border-bottom: 1px solid var(--border); position: relative; }
+    .home-btn { position: absolute; left: 14px; top: 22px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text-dim); font-size: 16px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; text-decoration: none; transition: all 0.2s; }
+    .home-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+    header .eyebrow { font-family: var(--font-mono); font-size: 10px; letter-spacing: 3px; color: var(--gold); text-transform: uppercase; margin-bottom: 6px; }
+    header h1 { font-family: var(--font-disp); font-size: clamp(18px,5vw,24px); font-weight: 700; letter-spacing: 1px; line-height: 1.2; color: var(--text); }
+    header h1 em { font-style: italic; color: var(--gold); }
+    .patent-badge { display: inline-block; margin-top: 8px; font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--text-dim); border: 1px solid var(--border); border-radius: 3px; padding: 2px 8px; }
+    .pro-badge-header { display: none; align-items: center; gap: 6px; margin-top: 8px; background: linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.05)); border: 1px solid var(--gold); border-radius: 20px; padding: 4px 14px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; color: var(--gold); }
+    .pro-badge-header.visible { display: inline-flex; }
+
+    /* ── WAKE STATUS ── */
+    #wake-status { text-align: center; font-family: var(--font-mono); font-size: 10px; padding: 6px; color: var(--text-dim); letter-spacing: 1px; }
+    #wake-status.active { color: var(--green); }
+
+    /* ── PRO GATE ── */
+    .pro-gate { position: relative; }
+    .pro-gate-overlay { position: absolute; inset: 0; z-index: 10; background: rgba(10,10,15,0.85); backdrop-filter: blur(4px); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: background 0.2s; }
+    .pro-gate-overlay:hover { background: rgba(10,10,15,0.75); }
+    .pro-gate-icon { font-size: 24px; }
+    .pro-gate-text { font-family: var(--font-ui); font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: 1px; }
+    .pro-gate-price { font-family: var(--font-mono); font-size: 11px; color: var(--gold); letter-spacing: 2px; }
+    .pro-gate-btn { background: var(--gold); color: #0a0a0f; font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; border: none; border-radius: 6px; padding: 8px 20px; cursor: pointer; margin-top: 4px; transition: all 0.2s; }
+    .pro-gate-btn:hover { background: #e8c060; transform: translateY(-1px); }
+    .pro-blurred { filter: blur(6px); pointer-events: none; user-select: none; }
+
+    /* ── SETUP PANEL ── */
+    #setup-panel { margin: 12px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .setup-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .setup-row:last-child { margin-bottom: 0; }
+    .setup-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; color: var(--gold); text-transform: uppercase; min-width: 90px; }
+    .setup-input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: var(--font-mono); font-size: 14px; padding: 7px 10px; outline: none; transition: border-color 0.2s; }
+    .setup-input:focus { border-color: var(--gold); }
+    .setup-input:disabled { opacity: 0.4; cursor: not-allowed; }
+    .setup-unit { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); min-width: 28px; }
+    .gps-btn { background: var(--blue-dim); border: 1px solid var(--blue); border-radius: 6px; color: var(--blue); font-family: var(--font-ui); font-size: 11px; font-weight: 600; letter-spacing: 1px; padding: 7px 12px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+    .gps-btn:hover:not(:disabled) { background: rgba(74,158,255,0.25); }
+    .gps-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pro-lock { font-size: 12px; }
+    #alt-status { font-family: var(--font-mono); font-size: 10px; color: var(--green); letter-spacing: 1px; text-align: center; padding: 4px 0; display: none; }
+
+    /* ── WATCHES — responsive sizing ── */
+    .watches-wrapper { display: flex; justify-content: center; align-items: flex-end; gap: 10px; padding: 10px 16px 0; }
+    .watch-block { display: flex; flex-direction: column; align-items: center; flex: 1; max-width: 220px; }
+    .watch-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 6px; }
+    .watch-label.head { color: var(--gold); }
+    .watch-label.feet { color: var(--silver); }
+    .watch-face { position: relative; width: 100%; aspect-ratio: 1; }
+    .watch-face svg { width: 100%; height: 100%; }
+    .watch-digital { font-family: var(--font-mono); font-size: clamp(11px,3vw,15px); font-weight: 500; letter-spacing: 0.5px; margin-top: 8px; padding: 5px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
+    .watch-digital.head { color: var(--gold); border-color: var(--gold-dim); }
+    .watch-digital.feet { color: var(--silver); }
+    .vs-divider { display: flex; flex-direction: column; align-items: center; padding-bottom: 40px; gap: 6px; color: var(--text-dim); font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; }
+    .vs-divider::before, .vs-divider::after { content: ''; width: 1px; height: 20px; background: var(--border); }
+
+    /* ── GAP COUNTER with pulse animation ── */
+    #gap-block { margin: 14px 16px 0; background: linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.03)); border: 1px solid var(--gold-dim); border-radius: 12px; padding: 14px 16px; text-align: center; position: relative; overflow: hidden; }
+    #gap-pulse { position: absolute; inset: 0; border-radius: 12px; border: 1px solid var(--gold); opacity: 0; animation: pulse-ring 3s ease-out infinite; pointer-events: none; }
+    @keyframes pulse-ring { 0% { transform: scale(0.98); opacity: 0.4; } 100% { transform: scale(1.02); opacity: 0; } }
+    #gap-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 3px; color: var(--gold-dim); text-transform: uppercase; margin-bottom: 4px; }
+    #gap-value { font-family: var(--font-mono); font-size: clamp(20px,6vw,30px); font-weight: 500; color: var(--gold); letter-spacing: 1px; transition: color 0.3s; }
+    #gap-unit { font-family: var(--font-mono); font-size: 10px; color: var(--gold-dim); margin-top: 2px; }
+    /* Rotating fun fact */
+    #gap-fact { font-family: var(--font-ui); font-size: 11px; color: var(--text-dim); margin-top: 8px; min-height: 16px; transition: opacity 0.5s; font-style: italic; }
+
+    /* Today's total counter */
+    #today-block { margin: 8px 16px 0; background: rgba(74,158,255,0.04); border: 1px solid rgba(74,158,255,0.15); border-radius: 8px; padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; }
+    #today-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: rgba(74,158,255,0.6); text-transform: uppercase; }
+    #today-value { font-family: var(--font-mono); font-size: 13px; color: var(--blue); }
+
+    /* ── LIFETIME ── */
+    #lifetime-block { margin: 10px 16px 0; background: linear-gradient(135deg, rgba(74,158,255,0.08), rgba(74,158,255,0.02)); border: 1px solid rgba(74,158,255,0.3); border-radius: 12px; padding: 14px 16px; text-align: center; }
+    #lifetime-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 3px; color: var(--blue); text-transform: uppercase; margin-bottom: 4px; opacity: 0.7; }
+    #lifetime-value { font-family: var(--font-mono); font-size: clamp(18px,5vw,26px); font-weight: 500; color: var(--blue); letter-spacing: 1px; }
+    #lifetime-sub { font-family: var(--font-ui); font-size: 11px; color: var(--text-dim); margin-top: 4px; line-height: 1.4; }
+
+    /* ── LANDMARKS ── */
+    #landmark-block { margin: 10px 16px 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+    #landmark-title { font-family: var(--font-mono); font-size: 9px; letter-spacing: 3px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px; }
+    .landmark-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+    .landmark-item:last-child { border-bottom: none; }
+    .landmark-icon { font-size: 18px; min-width: 26px; text-align: center; }
+    .landmark-info { flex: 1; }
+    .landmark-name { font-family: var(--font-ui); font-size: 12px; font-weight: 600; color: var(--text); letter-spacing: 0.5px; }
+    .landmark-desc { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+    .landmark-rate { font-family: var(--font-mono); font-size: 11px; color: var(--green); text-align: right; min-width: 70px; }
+
+    /* ── CONTROLS ── */
+    .controls { display: flex; gap: 8px; padding: 14px 16px 0; }
+    .btn { flex: 1; padding: 10px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); color: var(--text-dim); font-family: var(--font-ui); font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
+    .btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+    .btn.share-btn { background: linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05)); border-color: var(--gold-dim); color: var(--gold); }
+    .btn.share-btn:hover { background: rgba(201,168,76,0.25); }
+
+    /* ── EINSTEIN ── */
+    #einstein-block { margin: 10px 16px 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    #einstein-toggle { width: 100%; background: var(--panel); border: none; color: var(--text); font-family: var(--font-ui); font-size: 13px; font-weight: 600; letter-spacing: 1px; padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: background 0.2s; }
+    #einstein-toggle:hover { background: rgba(255,255,255,0.05); }
+    #einstein-toggle .title-group { display: flex; align-items: center; gap: 10px; }
+    #einstein-toggle .einstein-emoji { font-size: 20px; }
+    #einstein-toggle .arrow { font-size: 12px; color: var(--gold); transition: transform 0.3s; }
+    #einstein-toggle.open .arrow { transform: rotate(180deg); }
+    #einstein-content { background: var(--surface); max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+    #einstein-content.open { max-height: 700px; }
+    .einstein-inner { padding: 16px; border-top: 1px solid var(--border); }
+    .einstein-section { margin-bottom: 16px; }
+    .einstein-section:last-child { margin-bottom: 0; }
+    .einstein-section h3 { font-family: var(--font-disp); font-size: 13px; font-weight: 700; color: var(--gold); margin-bottom: 6px; font-style: italic; }
+    .einstein-section p { font-family: var(--font-ui); font-size: 13px; line-height: 1.6; color: var(--text-dim); }
+    .einstein-section p strong { color: var(--text); }
+    .einstein-formula { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; font-family: var(--font-mono); font-size: 12px; color: var(--gold); text-align: center; margin: 8px 0; letter-spacing: 1px; }
+
+    /* ── DATA PANEL ── */
+    #data-panel { margin: 10px 16px 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .data-key { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 2px; }
+    .data-val { font-family: var(--font-mono); font-size: 13px; color: var(--text); }
+    .data-val.highlight { color: var(--gold); }
+
+    /* ── MILESTONE FLASH ── */
+    @keyframes milestone-flash { 0% { background: rgba(201,168,76,0.3); } 100% { background: transparent; } }
+    .milestone-flash { animation: milestone-flash 1s ease-out; }
+
+    /* ── FOOTER ── */
+    footer { text-align: center; padding: 20px 16px 10px; font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--text-dim); border-top: 1px solid var(--border); margin-top: 16px; }
+    footer a { color: var(--gold-dim); text-decoration: none; }
+
+    /* ── SHARE MODAL ── */
+    #share-modal { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; padding: 20px; }
+    #share-modal.open { display: flex; }
+    #share-card { background: var(--surface); border: 1px solid var(--gold-dim); border-radius: 16px; padding: 24px; max-width: 360px; width: 100%; text-align: center; position: relative; }
+    #share-card .share-logo { font-family: var(--font-disp); font-size: 16px; font-style: italic; color: var(--gold); margin-bottom: 4px; }
+    #share-card .share-tagline { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; color: var(--text-dim); margin-bottom: 16px; }
+    #share-card .share-stat { font-family: var(--font-mono); font-size: 28px; color: var(--gold); margin: 8px 0 2px; }
+    #share-card .share-stat-label { font-family: var(--font-ui); font-size: 11px; color: var(--text-dim); margin-bottom: 12px; }
+    #share-card .share-fact { font-family: var(--font-ui); font-size: 12px; line-height: 1.6; color: var(--text-dim); background: var(--panel); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; }
+    #share-card .share-patent { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); letter-spacing: 1px; }
+    .share-actions { display: flex; gap: 8px; margin-top: 16px; }
+    .share-close { position: absolute; top: 12px; right: 14px; background: none; border: none; color: var(--text-dim); font-size: 18px; cursor: pointer; padding: 4px; }
+
+    /* ── PRO MODAL ── */
+    #pro-modal { display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.92); align-items: center; justify-content: center; padding: 20px; }
+    #pro-modal.open { display: flex; }
+    #pro-card { background: var(--surface); border: 1px solid var(--gold); border-radius: 20px; padding: 28px 24px; max-width: 380px; width: 100%; text-align: center; position: relative; }
+    .pro-card-glow { position: absolute; inset: -1px; border-radius: 20px; background: linear-gradient(135deg, rgba(201,168,76,0.3), transparent, rgba(201,168,76,0.1)); z-index: -1; pointer-events: none; }
+    .pro-modal-icon { font-size: 40px; margin-bottom: 8px; }
+    .pro-modal-title { font-family: var(--font-disp); font-size: 26px; font-weight: 700; font-style: italic; color: var(--gold); margin-bottom: 4px; }
+    .pro-modal-sub { font-family: var(--font-mono); font-size: 10px; letter-spacing: 3px; color: var(--text-dim); margin-bottom: 20px; }
+    .pro-features-list { text-align: left; margin-bottom: 20px; }
+    .pro-feature-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .pro-feature-item:last-child { border-bottom: none; }
+    .pro-feature-check { color: var(--gold); font-size: 14px; margin-top: 1px; flex-shrink: 0; }
+    .pro-feature-text { font-family: var(--font-ui); font-size: 13px; color: var(--text); line-height: 1.4; }
+    .pro-feature-text span { display: block; font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+    .pro-price-block { background: var(--panel); border: 1px solid var(--gold-dim); border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+    .pro-price { font-family: var(--font-mono); font-size: 36px; color: var(--gold); font-weight: 500; }
+    .pro-price-label { font-family: var(--font-ui); font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+    .pro-buy-btn { width: 100%; background: var(--gold); color: #0a0a0f; font-family: var(--font-ui); font-size: 14px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; border: none; border-radius: 10px; padding: 14px; cursor: pointer; transition: all 0.2s; margin-bottom: 10px; }
+    .pro-buy-btn:hover { background: #e8c060; transform: translateY(-2px); }
+    .pro-restore-btn { background: none; border: none; color: var(--text-dim); font-family: var(--font-ui); font-size: 12px; letter-spacing: 1px; cursor: pointer; text-decoration: underline; padding: 4px; }
+    .pro-modal-close { position: absolute; top: 14px; right: 16px; background: none; border: none; color: var(--text-dim); font-size: 20px; cursor: pointer; }
+    .pro-modal-note { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); letter-spacing: 1px; margin-top: 10px; line-height: 1.6; }
+
+    #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--panel); border: 1px solid var(--gold-dim); border-radius: 8px; padding: 10px 20px; font-family: var(--font-mono); font-size: 12px; color: var(--gold); letter-spacing: 1px; opacity: 0; transition: all 0.3s; z-index: 300; pointer-events: none; white-space: nowrap; }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── TIME DILATION SIMULATOR ── */
+    #simulator-block { margin: 10px 16px 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    #sim-toggle { width: 100%; background: var(--panel); border: none; color: var(--text); font-family: var(--font-ui); font-size: 13px; font-weight: 600; letter-spacing: 1px; padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: background 0.2s; }
+    #sim-toggle:hover { background: rgba(255,255,255,0.05); }
+    #sim-toggle .title-group { display: flex; align-items: center; gap: 10px; }
+    #sim-toggle .sim-emoji { font-size: 20px; }
+    #sim-toggle .arrow { font-size: 12px; color: var(--blue); transition: transform 0.3s; }
+    #sim-toggle.open .arrow { transform: rotate(180deg); }
+    #sim-content { background: var(--surface); max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+    #sim-content.open { max-height: 600px; }
+    .sim-inner { padding: 16px; border-top: 1px solid var(--border); }
+    .sim-intro { font-family: var(--font-ui); font-size: 12px; color: var(--text-dim); line-height: 1.5; margin-bottom: 14px; }
+    .sim-slider-row { margin-bottom: 16px; }
+    .sim-slider-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .sim-loc-name { font-family: var(--font-ui); font-size: 13px; font-weight: 600; color: var(--text); }
+    .sim-loc-alt { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+    #sim-slider { width: 100%; -webkit-appearance: none; appearance: none; height: 6px; background: linear-gradient(to right, var(--gold-dim), var(--blue)); border-radius: 3px; outline: none; cursor: pointer; }
+    #sim-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--gold); border: 2px solid var(--bg); cursor: pointer; box-shadow: 0 0 8px var(--gold-glow); }
+    #sim-slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--gold); border: 2px solid var(--bg); cursor: pointer; }
+    .sim-locations { display: flex; justify-content: space-between; margin-bottom: 14px; }
+    .sim-loc-tick { font-family: var(--font-mono); font-size: 8px; color: var(--text-dim); text-align: center; flex: 1; }
+    .sim-clocks { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 14px; }
+    .sim-clock { text-align: center; }
+    .sim-clock-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--text-dim); margin-bottom: 4px; }
+    .sim-clock-val { font-family: var(--font-mono); font-size: clamp(13px,4vw,17px); padding: 6px 10px; border-radius: 6px; border: 1px solid; }
+    .sim-clock-val.earth { color: var(--silver); border-color: rgba(184,192,204,0.3); background: rgba(184,192,204,0.05); }
+    .sim-clock-val.loc { color: var(--gold); border-color: var(--gold-dim); background: rgba(201,168,76,0.05); }
+    .sim-vs { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); padding-top: 14px; }
+    .sim-gap-bar { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; text-align: center; }
+    .sim-gap-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--text-dim); margin-bottom: 4px; }
+    .sim-gap-val { font-family: var(--font-mono); font-size: 18px; color: var(--blue); }
+    .sim-gap-desc { font-family: var(--font-ui); font-size: 11px; color: var(--text-dim); margin-top: 4px; font-style: italic; }
+
+    /* ── DAILY FACTS ── */
+    #daily-fact-block { margin: 10px 16px 0; background: linear-gradient(135deg, rgba(74,158,255,0.06), rgba(74,158,255,0.02)); border: 1px solid rgba(74,158,255,0.2); border-radius: 12px; padding: 14px 16px; }
+    #daily-fact-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    #daily-fact-title { font-family: var(--font-mono); font-size: 9px; letter-spacing: 3px; color: var(--blue); text-transform: uppercase; }
+    #daily-fact-date { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); }
+    #daily-fact-text { font-family: var(--font-disp); font-size: 14px; line-height: 1.6; color: var(--text); font-style: italic; margin-bottom: 8px; }
+    #daily-fact-source { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); letter-spacing: 1px; }
+    .fact-dot-row { display: flex; gap: 5px; margin-top: 10px; }
+    .fact-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(74,158,255,0.2); cursor: pointer; transition: background 0.2s; }
+    .fact-dot.active { background: var(--blue); }
+
+    /* ── ACHIEVEMENTS ── */
+    #achievements-block { margin: 10px 16px 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    #ach-toggle { width: 100%; background: var(--panel); border: none; color: var(--text); font-family: var(--font-ui); font-size: 13px; font-weight: 600; letter-spacing: 1px; padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: background 0.2s; }
+    #ach-toggle:hover { background: rgba(255,255,255,0.05); }
+    #ach-toggle .title-group { display: flex; align-items: center; gap: 10px; }
+    #ach-toggle .ach-emoji { font-size: 20px; }
+    #ach-toggle .arrow { font-size: 12px; color: var(--gold); transition: transform 0.3s; }
+    #ach-toggle.open .arrow { transform: rotate(180deg); }
+    #ach-content { background: var(--surface); max-height: 0; overflow: hidden; transition: max-height 0.5s ease; }
+    #ach-content.open { max-height: 800px; }
+    .ach-inner { padding: 14px 16px; border-top: 1px solid var(--border); }
+    .ach-progress-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .ach-progress-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
+    .ach-progress-count { font-family: var(--font-mono); font-size: 12px; color: var(--gold); }
+    .ach-progress-bar { height: 3px; background: var(--border); border-radius: 2px; margin-bottom: 14px; }
+    .ach-progress-fill { height: 100%; background: linear-gradient(to right, var(--gold-dim), var(--gold)); border-radius: 2px; transition: width 0.5s ease; }
+    .ach-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .ach-item { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; transition: all 0.3s; }
+    .ach-item.unlocked { border-color: var(--gold-dim); background: linear-gradient(135deg, rgba(201,168,76,0.1), rgba(201,168,76,0.03)); }
+    .ach-item.locked { opacity: 0.45; }
+    .ach-icon { font-size: 22px; margin-bottom: 4px; }
+    .ach-name { font-family: var(--font-ui); font-size: 11px; font-weight: 600; color: var(--text); line-height: 1.3; }
+    .ach-desc { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); margin-top: 3px; line-height: 1.4; }
+    .ach-date { font-family: var(--font-mono); font-size: 8px; color: var(--gold); margin-top: 4px; }
+    @keyframes ach-unlock { 0% { transform: scale(0.9); opacity: 0; } 50% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
+    .ach-item.just-unlocked { animation: ach-unlock 0.5s ease forwards; }
+
+    /* ── STREAK BANNER ── */
+    #streak-banner { margin: 10px 16px 0; background: linear-gradient(135deg, rgba(201,168,76,0.1), rgba(201,168,76,0.03)); border: 1px solid var(--gold-dim); border-radius: 8px; padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; }
+    #streak-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--gold-dim); text-transform: uppercase; }
+    #streak-value { font-family: var(--font-mono); font-size: 13px; color: var(--gold); }
+
+    /* ══════════════════════════════════════════════
+       FREEZE TIME GAME
+    ══════════════════════════════════════════════ */
+    #freeze-block { margin: 10px 16px 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    #freeze-toggle { width: 100%; background: var(--panel); border: none; color: var(--text); font-family: var(--font-ui); font-size: 13px; font-weight: 600; letter-spacing: 1px; padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: background 0.2s; }
+    #freeze-toggle:hover { background: rgba(255,255,255,0.05); }
+    #freeze-toggle .title-group { display: flex; align-items: center; gap: 10px; }
+    #freeze-toggle .freeze-emoji { font-size: 20px; }
+    #freeze-toggle .arrow { font-size: 12px; color: var(--blue); transition: transform 0.3s; }
+    #freeze-toggle.open .arrow { transform: rotate(180deg); }
+    #freeze-content { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; background: var(--surface); }
+    #freeze-content.open { max-height: 700px; }
+    .freeze-inner { padding: 16px; border-top: 1px solid var(--border); }
+
+    /* idle screen */
+    #freeze-idle { text-align: center; }
+    .freeze-tagline { font-family: var(--font-ui); font-size: 11px; color: var(--text-dim); letter-spacing: 1px; margin-bottom: 16px; line-height: 1.6; }
+    #freeze-start-btn { background: var(--blue); border: none; border-radius: 8px; color: #fff; font-family: var(--font-ui); font-size: 12px; font-weight: 700; letter-spacing: 2px; padding: 12px 32px; cursor: pointer; transition: all 0.2s; }
+    #freeze-start-btn:hover { background: #6ab0ff; transform: translateY(-1px); }
+    .freeze-best-row { margin-top: 12px; font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+
+    /* playing screen */
+    #freeze-playing { display: none; text-align: center; }
+    .freeze-target-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 3px; color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase; }
+    #freeze-target { font-family: var(--font-mono); font-size: clamp(22px,6vw,32px); color: var(--gold); margin-bottom: 14px; letter-spacing: 2px; }
+    #freeze-counter { font-family: var(--font-mono); font-size: clamp(28px,8vw,44px); color: var(--blue); letter-spacing: 2px; margin-bottom: 4px; transition: color 0.15s; }
+    #freeze-counter.frozen { color: var(--gold); }
+    .freeze-unit { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); letter-spacing: 2px; margin-bottom: 16px; }
+    #freeze-tap-btn { width: 100%; background: linear-gradient(135deg, var(--blue), #2266cc); border: none; border-radius: 10px; color: #fff; font-family: var(--font-ui); font-size: 14px; font-weight: 700; letter-spacing: 3px; padding: 18px; cursor: pointer; transition: all 0.1s; user-select: none; -webkit-user-select: none; }
+    #freeze-tap-btn:active { transform: scale(0.97); }
+    #freeze-tap-btn:disabled { background: var(--panel); color: var(--text-dim); cursor: default; }
+
+    /* result screen */
+    #freeze-result { display: none; text-align: center; padding: 8px 0; }
+    #freeze-result-icon { font-size: 40px; margin-bottom: 8px; }
+    #freeze-result-label { font-family: var(--font-ui); font-size: 11px; letter-spacing: 2px; color: var(--text-dim); margin-bottom: 4px; }
+    #freeze-result-diff { font-family: var(--font-mono); font-size: 26px; margin-bottom: 4px; }
+    #freeze-result-diff.great { color: var(--gold); }
+    #freeze-result-diff.good  { color: #4ade80; }
+    #freeze-result-diff.ok    { color: var(--blue); }
+    #freeze-result-diff.miss  { color: #f87171; }
+    #freeze-result-score { font-family: var(--font-mono); font-size: 13px; color: var(--text-dim); margin-bottom: 4px; }
+    #freeze-result-best  { font-family: var(--font-mono); font-size: 10px; color: var(--gold); margin-bottom: 14px; }
+    #freeze-again-btn { background: var(--blue); border: none; border-radius: 8px; color: #fff; font-family: var(--font-ui); font-size: 12px; font-weight: 700; letter-spacing: 2px; padding: 10px 28px; cursor: pointer; }
+
+    /* score bar */
+    .freeze-scores { display: flex; justify-content: space-around; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .freeze-score-item { text-align: center; }
+    .freeze-score-val { font-family: var(--font-mono); font-size: 14px; color: var(--text); }
+    .freeze-score-lbl { font-family: var(--font-mono); font-size: 8px; letter-spacing: 1px; color: var(--text-dim); margin-top: 2px; }
+
+    /* ══════════════════════════════════════════════
+       EVOLUTION CREATURE
+    ══════════════════════════════════════════════ */
+    #creature-block { margin: 10px 16px 0; background: linear-gradient(135deg, rgba(74,158,255,0.04), rgba(201,168,76,0.04)); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    #creature-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    #creature-title { font-family: var(--font-mono); font-size: 9px; letter-spacing: 3px; color: var(--gold); text-transform: uppercase; }
+    #creature-age-label { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); }
+    #creature-stage-label { font-family: var(--font-ui); font-size: 10px; letter-spacing: 1px; color: var(--text-dim); text-align: center; margin-bottom: 6px; text-transform: uppercase; }
+    #creature-canvas-wrap { display: flex; justify-content: center; margin-bottom: 10px; position: relative; }
+    #creature-canvas { border-radius: 12px; background: radial-gradient(ellipse at center, rgba(74,158,255,0.06) 0%, transparent 70%); }
+    #creature-status { font-family: var(--font-disp); font-size: 14px; color: var(--text); text-align: center; font-style: italic; line-height: 1.5; margin-bottom: 10px; }
+    #creature-progress-wrap { margin-bottom: 8px; }
+    #creature-progress-label { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 8px; color: var(--text-dim); margin-bottom: 4px; }
+    #creature-progress-bar { height: 4px; background: var(--border); border-radius: 2px; }
+    #creature-progress-fill { height: 100%; background: linear-gradient(to right, var(--blue), var(--gold)); border-radius: 2px; transition: width 1s ease; }
+    #creature-stats { display: flex; justify-content: space-around; padding-top: 10px; border-top: 1px solid var(--border); }
+    .creature-stat { text-align: center; }
+    .creature-stat-val { font-family: var(--font-mono); font-size: 13px; color: var(--text); }
+    .creature-stat-lbl { font-family: var(--font-mono); font-size: 8px; letter-spacing: 1px; color: var(--text-dim); margin-top: 2px; }
+
+    /* ── NIGHT MODE ── */
+    body.night-mode #setup-panel, body.night-mode #onboard-hint, body.night-mode #today-block,
+    body.night-mode #lifetime-block, body.night-mode #landmark-block, body.night-mode #streak-banner,
+    body.night-mode #daily-fact-block, body.night-mode #quiz-block, body.night-mode #simulator-block,
+    body.night-mode #achievements-block, body.night-mode #freeze-block, body.night-mode #creature-block,
+    body.night-mode .controls, body.night-mode #einstein-block, body.night-mode #data-panel,
+    body.night-mode footer, body.night-mode #wake-status, body.night-mode .patent-badge,
+    body.night-mode .eyebrow, body.night-mode #lang-toggle, body.night-mode #pro-badge-header,
+    body.night-mode .home-btn, body.night-mode #reminder-card { display: none !important; }
+    body.night-mode header h1 { font-size: 16px; opacity: 0.35; }
+    body.night-mode { filter: brightness(0.75); }
+    body.night-mode .watches-wrapper { transform: scale(1.12); margin-top: 10vh; transition: transform 0.5s; }
+    body.night-mode #gap-block { opacity: 0.8; }
+    #night-exit-hint { display: none; }
+    body.night-mode #night-exit-hint { display: block; position: fixed; bottom: 18px; left: 0; right: 0; text-align: center; font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: rgba(232,232,240,0.25); }
+  </style>
+</head>
+<body>
+<div id="starfield"></div>
+<div id="app">
+
+  <!-- HEADER with home button -->
+  <header>
+    <a href="/index.html" class="home-btn" title="Back to home">⌂</a>
+    <div class="eyebrow">The Science of Living</div>
+    <h1>Einstein Time Dilation<br><em>Timepiece</em></h1>
+    <div class="patent-badge">US PROV. PAT. APP. No. 64/080,303</div>
+    <div class="pro-badge-header" id="pro-badge-header">★ PRO</div>
+    <button id="lang-toggle" style="margin-top:8px;background:none;border:1px solid rgba(201,168,76,0.4);border-radius:14px;color:#c9a84c;font-family:var(--font-mono);font-size:10px;letter-spacing:2px;padding:3px 12px;cursor:pointer;">🌐 ES</button>
+  </header>
+
+  <div id="wake-status">● SCREEN LOCK INACTIVE</div>
+
+  <!-- SETUP PANEL -->
+  <div id="setup-panel">
+    <div class="setup-row">
+      <span class="setup-label">Your Height</span>
+      <input type="number" class="setup-input" id="input-height" placeholder="e.g. 5.9" min="1" max="8" step="0.1" />
+      <span class="setup-unit">ft</span>
+    </div>
+    <div class="setup-row">
+      <span class="setup-label">Your Age <span class="pro-lock" id="age-lock">🔒</span></span>
+      <input type="number" class="setup-input" id="input-age" placeholder="Pro feature" min="1" max="120" disabled />
+      <span class="setup-unit">yrs</span>
+    </div>
+    <div class="setup-row">
+      <span class="setup-label">Altitude <span class="pro-lock" id="alt-lock">🔒</span></span>
+      <input type="number" class="setup-input" id="input-altitude" placeholder="Pro feature" min="0" max="30000" disabled />
+      <span class="setup-unit">ft</span>
+      <button class="gps-btn" id="gps-btn" disabled>📍 GPS</button>
+    </div>
+    <div id="alt-status"></div>
+  </div>
+
+  <!-- WATCHES -->
+  <div class="watches-wrapper">
+    <div class="watch-block">
+      <div class="watch-label head">▲ HEAD</div>
+      <div class="watch-face">
+        <svg id="svg-head" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="100" cy="100" r="96" fill="#1a1a20" stroke="#c9a84c" stroke-width="2.5"/>
+          <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(201,168,76,0.2)" stroke-width="0.5"/>
+          <g id="head-marks"></g>
+          <line id="head-hour" x1="100" y1="100" x2="100" y2="46" stroke="#c9a84c" stroke-width="4" stroke-linecap="round"/>
+          <line id="head-min"  x1="100" y1="100" x2="100" y2="28" stroke="#e8e8f0" stroke-width="2.5" stroke-linecap="round"/>
+          <line id="head-sec"  x1="100" y1="108" x2="100" y2="20" stroke="#ff6b6b" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="100" cy="100" r="5" fill="#c9a84c"/>
+          <circle cx="100" cy="100" r="2" fill="#0a0a0f"/>
+        </svg>
+      </div>
+      <div class="watch-digital head" id="dig-head">--:--:--</div>
+    </div>
+    <div class="vs-divider">VS</div>
+    <div class="watch-block">
+      <div class="watch-label feet">▼ FEET</div>
+      <div class="watch-face">
+        <svg id="svg-feet" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="100" cy="100" r="96" fill="#12121a" stroke="#b8c0cc" stroke-width="2.5"/>
+          <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(184,192,204,0.2)" stroke-width="0.5"/>
+          <g id="feet-marks"></g>
+          <line id="feet-hour" x1="100" y1="100" x2="100" y2="46" stroke="#b8c0cc" stroke-width="4" stroke-linecap="round"/>
+          <line id="feet-min"  x1="100" y1="100" x2="100" y2="28" stroke="#e8e8f0" stroke-width="2.5" stroke-linecap="round"/>
+          <line id="feet-sec"  x1="100" y1="108" x2="100" y2="20" stroke="#4a9eff" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="100" cy="100" r="5" fill="#b8c0cc"/>
+          <circle cx="100" cy="100" r="2" fill="#0a0a0f"/>
+        </svg>
+      </div>
+      <div class="watch-digital feet" id="dig-feet">--:--:--</div>
+    </div>
+  </div>
+
+  <!-- CLOCK FACE THEMES (Pro) -->
+  <div id="theme-row" style="display:flex;align-items:center;justify-content:center;gap:10px;margin:8px 16px 0;">
+    <span id="theme-label" style="font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:var(--text-dim);">CLOCK FACE</span>
+    <button class="theme-swatch" data-theme="classic" title="Classic Gold" style="width:26px;height:26px;border-radius:50%;border:2px solid #c9a84c;background:radial-gradient(circle at 35% 35%, #e8c060, #c9a84c);cursor:pointer;"></button>
+    <button class="theme-swatch" data-theme="rose" title="Rose Gold" style="width:26px;height:26px;border-radius:50%;border:2px solid transparent;background:radial-gradient(circle at 35% 35%, #f2c4c4, #d98e8e);cursor:pointer;position:relative;"><span class="theme-lock" style="position:absolute;top:-7px;right:-7px;font-size:10px;">🔒</span></button>
+    <button class="theme-swatch" data-theme="midnight" title="Midnight Blue" style="width:26px;height:26px;border-radius:50%;border:2px solid transparent;background:radial-gradient(circle at 35% 35%, #7ab8ff, #2f6fd0);cursor:pointer;position:relative;"><span class="theme-lock" style="position:absolute;top:-7px;right:-7px;font-size:10px;">🔒</span></button>
+    <button class="theme-swatch" data-theme="emerald" title="Emerald" style="width:26px;height:26px;border-radius:50%;border:2px solid transparent;background:radial-gradient(circle at 35% 35%, #7fe0b0, #2e9e6b);cursor:pointer;position:relative;"><span class="theme-lock" style="position:absolute;top:-7px;right:-7px;font-size:10px;">🔒</span></button>
+  </div>
+
+  <!-- GAP COUNTER with pulse + fun fact -->
+  <div id="gap-block">
+    <div id="gap-pulse"></div>
+    <div id="gap-label">Head Ahead of Feet By</div>
+    <div id="gap-value">0.000000</div>
+    <div id="gap-unit">nanoseconds since app opened</div>
+    <div id="gap-fact"></div>
+  </div>
+
+  <!-- ONBOARDING HINT -->
+  <div id="onboard-hint" style="text-align:center;padding:6px 16px 0;font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;">↑ Enter your height above to personalize your dilation rate</div>
+
+  <!-- TODAY'S TOTAL -->
+  <div id="today-block">
+    <div>
+      <div id="today-label">Today's Total Gap</div>
+      <div id="today-sublabel" style="font-family:var(--font-mono);font-size:8px;color:var(--text-dim);letter-spacing:1px;margin-top:2px;">resets at midnight</div>
+    </div>
+    <div id="today-value">0.000000 ns</div>
+  </div>
+
+  <!-- LIFETIME COUNTER — PRO GATED -->
+  <div id="lifetime-block" class="pro-gate">
+    <div class="pro-gate-overlay" id="lifetime-gate" onclick="openProModal()">
+      <div class="pro-gate-icon">🧬</div>
+      <div class="pro-gate-text">Your Lifetime Gap</div>
+      <div class="pro-gate-price">EINSTEIN CLOCK PRO</div>
+      <button class="pro-gate-btn">Unlock for $1.99</button>
+    </div>
+    <div class="pro-blurred">
+      <div id="lifetime-label">Your Lifetime Dilation Gap</div>
+      <div id="lifetime-value">—</div>
+      <div id="lifetime-sub">How much older your head is than your feet</div>
+    </div>
+  </div>
+
+  <!-- LANDMARK COMPARISONS — PRO GATED -->
+  <div id="landmark-block" class="pro-gate">
+    <div class="pro-gate-overlay" id="landmark-gate" onclick="openProModal()">
+      <div class="pro-gate-icon">🌍</div>
+      <div class="pro-gate-text">Landmark Comparisons</div>
+      <div class="pro-gate-price">EINSTEIN CLOCK PRO</div>
+      <button class="pro-gate-btn">Unlock for $1.99</button>
+    </div>
+    <div class="pro-blurred">
+      <div id="landmark-title">What Your Gap Compares To</div>
+      <div id="landmark-list">
+        <div class="landmark-item"><div class="landmark-icon">🌍</div><div class="landmark-info"><div class="landmark-name">GPS Satellite Correction</div><div class="landmark-desc">Satellites must correct for time dilation daily</div></div><div class="landmark-rate" id="lm-gps">—</div></div>
+        <div class="landmark-item"><div class="landmark-icon">⚡</div><div class="landmark-info"><div class="landmark-name">Speed of Light Travel</div><div class="landmark-desc">Distance light covers in your session gap</div></div><div class="landmark-rate" id="lm-light">—</div></div>
+        <div class="landmark-item"><div class="landmark-icon">🏔️</div><div class="landmark-info"><div class="landmark-name">vs. Mt. Everest Summit</div><div class="landmark-desc">Rate at 29,032 ft elevation (8,849 m)</div></div><div class="landmark-rate" id="lm-everest">—</div></div>
+        <div class="landmark-item"><div class="landmark-icon">🕰️</div><div class="landmark-info"><div class="landmark-name">Human Lifespan (80 yrs)</div><div class="landmark-desc">Total head-feet gap over a full life</div></div><div class="landmark-rate" id="lm-life">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REMINDER ONBOARDING CARD (shown once, from day 2) -->
+  <div id="reminder-card" style="display:none;margin:10px 16px 0;background:linear-gradient(135deg, rgba(201,168,76,0.12), rgba(201,168,76,0.04));border:1px solid var(--gold-dim);border-radius:12px;padding:14px 16px;">
+    <div id="reminder-card-text" style="font-family:var(--font-ui);font-size:13px;color:var(--text);line-height:1.5;margin-bottom:10px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button id="reminder-card-yes" style="flex:1;background:var(--gold);color:#0a0a0f;border:none;border-radius:8px;font-family:var(--font-ui);font-size:12px;font-weight:700;letter-spacing:1px;padding:9px;cursor:pointer;"></button>
+      <button id="reminder-card-no" style="flex:1;background:none;border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-family:var(--font-ui);font-size:12px;padding:9px;cursor:pointer;"></button>
+    </div>
+  </div>
+
+  <!-- STREAK BANNER -->
+  <div id="streak-banner">
+    <button id="reminder-btn" title="Daily reminder" style="background:none;border:1px solid rgba(201,168,76,0.35);border-radius:8px;color:#8a6f2e;font-size:14px;padding:4px 9px;cursor:pointer;margin-right:10px;">🔕</button>
+    <div style="flex:1">
+      <div id="streak-label">🔥 Daily Streak</div>
+      <div id="streak-since" style="font-family:var(--font-mono);font-size:8px;color:var(--gold-dim);letter-spacing:1px;margin-top:2px;"></div>
+    </div>
+    <div id="streak-value">Loading…</div>
+  </div>
+
+  <!-- DAILY EINSTEIN FACT -->
+  <div id="daily-fact-block">
+    <div id="daily-fact-header">
+      <div id="daily-fact-title">⚛ Today's Relativity Fact</div>
+      <div id="daily-fact-date"></div>
+    </div>
+    <div id="daily-fact-text">Loading today's fact…</div>
+    <div id="daily-fact-source"></div>
+    <div class="fact-dot-row" id="fact-dots"></div>
+  </div>
+
+  <!-- WEEKLY PHYSICS QUIZ -->
+  <div id="quiz-block" style="margin:10px 16px 0;background:linear-gradient(135deg, rgba(201,168,76,0.06), rgba(201,168,76,0.02));border:1px solid rgba(201,168,76,0.25);border-radius:12px;padding:14px 16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div id="quiz-title" style="font-family:var(--font-mono);font-size:9px;letter-spacing:3px;color:var(--gold);text-transform:uppercase;">🧪 Weekly Physics Quiz</div>
+      <div id="quiz-week" style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);"></div>
+    </div>
+    <div id="quiz-question" style="font-family:var(--font-disp);font-size:14px;line-height:1.6;color:var(--text);font-style:italic;margin-bottom:10px;"></div>
+    <div id="quiz-options" style="display:flex;flex-direction:column;gap:6px;"></div>
+    <div id="quiz-feedback" style="display:none;font-family:var(--font-ui);font-size:12px;line-height:1.5;color:var(--text-dim);margin-top:10px;padding-top:10px;border-top:1px solid rgba(201,168,76,0.2);"></div>
+  </div>
+
+  <!-- TIME DILATION SIMULATOR -->
+  <div id="simulator-block">
+    <button id="sim-toggle">
+      <span class="title-group"><span class="sim-emoji">🌌</span><span>Time Dilation Simulator</span></span>
+      <span class="arrow">▼</span>
+    </button>
+    <div id="sim-content">
+      <div class="sim-inner">
+        <div class="sim-intro">Drag the slider to explore how dramatically time dilates at different locations. Watch the clocks separate in real time.</div>
+        <div class="sim-slider-row">
+          <div class="sim-slider-label">
+            <span class="sim-loc-name" id="sim-loc-name">Earth Surface</span>
+            <span class="sim-loc-alt" id="sim-loc-alt">0 ft altitude</span>
+          </div>
+          <input type="range" id="sim-slider" min="0" max="6" step="1" value="0" />
+          <div class="sim-locations">
+            <span class="sim-loc-tick">🌍<br>Earth</span>
+            <span class="sim-loc-tick">🏔️<br>Everest</span>
+            <span class="sim-loc-tick">✈️<br>Plane</span>
+            <span class="sim-loc-tick">🛰️<br>ISS</span>
+            <span class="sim-loc-tick">🌙<br>Moon</span>
+            <span class="sim-loc-tick">🪐<br>Mars</span>
+            <span class="sim-loc-tick">⚫<br>Black Hole</span>
+          </div>
+        </div>
+        <div class="sim-clocks">
+          <div class="sim-clock">
+            <div class="sim-clock-label">EARTH</div>
+            <div class="sim-clock-val earth" id="sim-earth-clock">00:00:00.000</div>
+          </div>
+          <div class="sim-vs">VS</div>
+          <div class="sim-clock">
+            <div class="sim-clock-label" id="sim-loc-clock-label">LOCATION</div>
+            <div class="sim-clock-val loc" id="sim-loc-clock">00:00:00.000</div>
+          </div>
+        </div>
+        <div class="sim-gap-bar">
+          <div class="sim-gap-label">TIME DIFFERENCE PER DAY</div>
+          <div class="sim-gap-val" id="sim-gap-val">0 ns/day</div>
+          <div class="sim-gap-desc" id="sim-gap-desc">Select a location above</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACHIEVEMENTS -->
+  <div id="achievements-block">
+    <button id="ach-toggle">
+      <span class="title-group"><span class="ach-emoji">🏆</span><span>Achievements</span></span>
+      <span class="arrow">▼</span>
+    </button>
+    <div id="ach-content">
+      <div class="ach-inner">
+        <div class="ach-progress-row">
+          <span class="ach-progress-label">COLLECTED</span>
+          <span class="ach-progress-count" id="ach-count">0 / 10</span>
+        </div>
+        <div class="ach-progress-bar"><div class="ach-progress-fill" id="ach-fill" style="width:0%"></div></div>
+        <div class="ach-grid" id="ach-grid"><!-- populated by JS --></div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- FREEZE TIME GAME -->
+  <div id="freeze-block">
+    <button id="freeze-toggle">
+      <span class="title-group"><span class="freeze-emoji">⚡</span><span>Freeze Time</span></span>
+      <span class="arrow">▼</span>
+    </button>
+    <div id="freeze-content">
+      <div class="freeze-inner">
+
+        <!-- IDLE -->
+        <div id="freeze-idle">
+          <div class="freeze-tagline">A nanosecond counter blasts upward.<br>Tap FREEZE exactly on the target.<br>How precise can you be?</div>
+          <div id="freeze-legend" style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:1px;line-height:1.8;margin-bottom:14px;">
+            🎯 within 0.01 ns = 1000 pts<br>⚡ within 0.1 ns = 500 pts<br>👍 within 0.5 ns = 200 pts<br>😬 within 2 ns = 50 pts &nbsp;·&nbsp; 🔥 streak adds bonus
+          </div>
+          <button id="freeze-start-btn">▶ START</button>
+          <div class="freeze-best-row">Best: <span id="freeze-best-display">—</span></div>
+        </div>
+
+        <!-- PLAYING -->
+        <div id="freeze-playing" style="display:none">
+          <div class="freeze-target-label">TARGET</div>
+          <div id="freeze-target">00.000000 ns</div>
+          <div id="freeze-counter">00.000000</div>
+          <div class="freeze-unit">nanoseconds</div>
+          <button id="freeze-tap-btn">⚡ FREEZE</button>
+          <div class="freeze-scores">
+            <div class="freeze-score-item"><div class="freeze-score-val" id="fz-round">1</div><div class="freeze-score-lbl">ROUND</div></div>
+            <div class="freeze-score-item"><div class="freeze-score-val" id="fz-score">0</div><div class="freeze-score-lbl">SCORE</div></div>
+            <div class="freeze-score-item"><div class="freeze-score-val" id="fz-streak">0</div><div class="freeze-score-lbl">STREAK</div></div>
+          </div>
+        </div>
+
+        <!-- RESULT -->
+        <div id="freeze-result">
+          <div id="freeze-result-icon">⚡</div>
+          <div class="freeze-target-label">YOU FROZE AT</div>
+          <div id="freeze-result-diff" class="great">0.000000 ns off</div>
+          <div id="freeze-result-score"></div>
+          <div id="freeze-result-best"></div>
+          <button id="freeze-again-btn">▶ NEXT ROUND</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- EVOLUTION CREATURE -->
+  <div id="creature-block">
+    <div id="creature-header">
+      <div id="creature-title">🧬 Your Time Creature</div>
+      <div id="creature-age-label">Age: <span id="creature-days">0</span> days</div>
+    </div>
+    <div id="creature-stage-label">Loading…</div>
+    <div id="creature-canvas-wrap">
+      <canvas id="creature-canvas" width="220" height="180"></canvas>
+    </div>
+    <div id="creature-status">Your creature is waiting to be born…</div>
+    <div id="creature-progress-wrap">
+      <div class="creature-progress-label" id="creature-progress-label-row">
+        <span id="creature-stage-name">Stage 1</span>
+        <span id="creature-next-label">Next evolution</span>
+      </div>
+      <div id="creature-progress-bar"><div id="creature-progress-fill" style="width:0%"></div></div>
+    </div>
+    <div id="creature-stats">
+      <div class="creature-stat"><div class="creature-stat-val" id="cs-streak">0</div><div class="creature-stat-lbl">STREAK</div></div>
+      <div class="creature-stat"><div class="creature-stat-val" id="cs-stage">1</div><div class="creature-stat-lbl">STAGE</div></div>
+      <div class="creature-stat"><div class="creature-stat-val" id="cs-visits">0</div><div class="creature-stat-lbl">VISITS</div></div>
+    </div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <button class="btn" id="night-btn">🌙 Night Mode</button>
+    <button class="btn" id="reset-btn">↺ Reset Gap</button>
+    <button class="btn share-btn" id="share-btn" onclick="handleShare()">↗ Share</button>
+  </div>
+
+  <!-- EINSTEIN EXPLANATION -->
+  <div id="einstein-block">
+    <button id="einstein-toggle">
+      <span class="title-group"><span class="einstein-emoji">🧠</span><span>Einstein's Explanation</span></span>
+      <span class="arrow">▼</span>
+    </button>
+    <div id="einstein-content">
+      <div class="einstein-inner">
+        <div class="einstein-section"><h3>Why Does This Happen?</h3><p>In 1915, Albert Einstein published his <strong>General Theory of Relativity</strong>, which revealed something extraordinary: <strong>time does not flow at the same rate everywhere.</strong> Gravity warps the fabric of space-time itself — and the stronger gravity's pull, the slower time passes.</p></div>
+        <div class="einstein-section"><h3>Closer to Earth = Slower Time</h3><p>Your feet are slightly closer to Earth's center of mass than your head. This means gravity pulls on your feet just a tiny bit harder. As a result, <strong>your feet experience time passing fractionally slower</strong> than your head — every single second of every day.</p></div>
+        <div class="einstein-section"><h3>The Mathematics</h3><div class="einstein-formula">Δt = (gh/c²) × t</div><p>Where <strong>g</strong> is gravitational acceleration (9.8 m/s²), <strong>h</strong> is height difference, <strong>c</strong> is the speed of light, and <strong>t</strong> is elapsed time. The difference is tiny — but it is <strong>absolutely real</strong> and has been confirmed by atomic clocks.</p></div>
+        <div class="einstein-section"><h3>Proven by Experiment</h3><p>In 2010, physicists at NIST used optical atomic clocks so precise they confirmed this effect <strong>across just 33 centimeters</strong> of height difference. This app shows you your personal piece of that experiment, happening right now.</p></div>
+        <div class="einstein-section"><h3>Altitude Matters Too</h3><p>The higher you are above sea level, the weaker Earth's gravitational pull — so time actually moves <strong>faster</strong> at altitude. GPS satellites must constantly correct their onboard clocks by <strong>38 microseconds per day</strong> or navigation would drift miles off course.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATA PANEL -->
+  <div id="data-panel">
+    <div class="data-item"><div class="data-key">Current Time</div><div class="data-val highlight" id="dp-time">--:--:--</div></div>
+    <div class="data-item"><div class="data-key">Dilation Rate</div><div class="data-val" id="dp-rate">— ns/hr</div></div>
+    <div class="data-item"><div class="data-key">Your Altitude</div><div class="data-val" id="dp-alt">— ft</div></div>
+    <div class="data-item"><div class="data-key">Height Diff</div><div class="data-val" id="dp-hdiff">— ft</div></div>
+  </div>
+
+  <footer>
+    US PROVISIONAL PATENT APPLICATION No. 64/080,303 &nbsp;·&nbsp; FILED JUNE 1, 2026<br>
+    INVENTOR: LUIS URIBE &nbsp;·&nbsp; RIVERBANK, CA<br>
+    <a href="https://uribebusiness-bit.github.io/einstein-clock">uribebusiness-bit.github.io/einstein-clock</a>
+  </footer>
+</div>
+
+<!-- SHARE MODAL -->
+<div id="share-modal">
+  <div id="share-card">
+    <button class="share-close" id="share-close">✕</button>
+    <div class="share-logo">Einstein Time Dilation Timepiece</div>
+    <div class="share-tagline">US PROV. PAT. APP. No. 64/080,303</div>
+    <div class="share-stat" id="sc-gap">0.000000</div>
+    <div class="share-stat-label">nanoseconds — my head is older than my feet</div>
+    <div class="share-fact" id="sc-fact">Open the app to generate your personal dilation data.</div>
+    <div class="share-patent">Get it on Google Play · Einstein Clock</div>
+    <div class="share-actions">
+      <button class="btn share-btn" id="share-image-btn">📸 Share Image</button>
+      <button class="btn" id="copy-share-btn">📋 Copy Text</button>
+      <button class="btn" id="close-share-btn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRO MODAL -->
+<div id="pro-modal">
+  <div id="pro-card">
+    <div class="pro-card-glow"></div>
+    <button class="pro-modal-close" id="pro-modal-close">✕</button>
+    <div class="pro-modal-icon">⭐</div>
+    <div class="pro-modal-title">Einstein Clock Pro</div>
+    <div class="pro-modal-sub">ONE-TIME PURCHASE · YOURS FOREVER</div>
+    <div class="pro-features-list">
+      <div class="pro-feature-item"><div class="pro-feature-check">★</div><div class="pro-feature-text">Your Lifetime Gap<span>See how much older your head already is than your feet across your entire life</span></div></div>
+      <div class="pro-feature-item"><div class="pro-feature-check">★</div><div class="pro-feature-text">GPS Altitude Detection<span>Auto-detect your elevation for a perfectly accurate dilation rate</span></div></div>
+      <div class="pro-feature-item"><div class="pro-feature-check">★</div><div class="pro-feature-text">Landmark Comparisons<span>Your gap vs. GPS satellites, Mt. Everest, the speed of light, and 80 years of life</span></div></div>
+      <div class="pro-feature-item"><div class="pro-feature-check">★</div><div class="pro-feature-text">Share Your Gap<span>Generate a personal dilation card and share your exact numbers</span></div></div>
+      <div class="pro-feature-item"><div class="pro-feature-check">★</div><div class="pro-feature-text">Premium Clock Faces<span>Rose gold, midnight blue, and emerald watch faces</span></div></div>
+    </div>
+    <div class="pro-price-block">
+      <div class="pro-price">$1.99</div>
+      <div class="pro-price-label">One-time · No subscription · No ads</div>
+    </div>
+    <button class="pro-buy-btn" id="pro-buy-btn">Unlock Einstein Clock Pro</button>
+    <button class="pro-restore-btn" id="pro-restore-btn">Restore previous purchase</button>
+    <div class="pro-modal-note">Payment processed securely by Google Play.<br>Purchase is linked to your Google account —<br>restore anytime, on any device.</div>
+  </div>
+</div>
+
+<div id="night-exit-hint">TAP ANYWHERE TO EXIT NIGHT MODE</div>
+<div id="toast"></div>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────────────────────
+const G = 9.80665, C = 299792458, EARTH_R = 6371000;
+const FT_TO_M = 0.3048, NS_PER_S = 1e9, EVEREST_M = 8849;
+
+// ── PRO STATE ──────────────────────────────────────────────────────
+let isPro = localStorage.getItem('einstein_pro') === 'true';
+
+// ── LANGUAGE ───────────────────────────────────────────────────────
+function CUR_LANG(){ const s = localStorage.getItem('ec_lang'); if (s) return s; return ((navigator.language||'').toLowerCase().startsWith('es')) ? 'es' : 'en'; }
+function TT(en, es){ return CUR_LANG() === 'es' ? es : en; }
+
+// ── GOOGLE PLAY BILLING (Digital Goods API) ───────────────────────
+const PRO_SKU = 'pro_upgrade';
+const PLAY_BILLING_URL = 'https://play.google.com/billing';
+const PLAY_STORE_LISTING = 'https://play.google.com/store/apps/details?id=com.einsteintimepiece.app';
+
+function playBillingAvailable() {
+  return 'getDigitalGoodsService' in window && 'PaymentRequest' in window;
+}
+
+async function getPlayBillingService() {
+  try { return await window.getDigitalGoodsService(PLAY_BILLING_URL); }
+  catch { return null; }
+}
+
+// Fetch the localized price and show it in the modal
+async function refreshProPrice() {
+  if (!playBillingAvailable()) return;
+  try {
+    const service = await getPlayBillingService();
+    if (!service) return;
+    const details = await service.getDetails([PRO_SKU]);
+    if (details && details.length > 0) {
+      const p = details[0].price; // { currency, value }
+      const priceStr = new Intl.NumberFormat(undefined, { style: 'currency', currency: p.currency }).format(p.value);
+      const priceEl = document.getElementById('pro-buy-btn');
+      if (priceEl) priceEl.textContent = TT(`Unlock Einstein Clock Pro — ${priceStr}`,`Desbloquear Einstein Clock Pro — ${priceStr}`);
+      // Keep the locked-feature gates and modal price in sync with the live store price
+      document.querySelectorAll('.pro-gate-btn').forEach(b => { b.textContent = TT(`Unlock for ${priceStr}`,`Desbloquear por ${priceStr}`); });
+      const priceBlock = document.querySelector('.pro-price');
+      if (priceBlock) priceBlock.textContent = priceStr;
+    }
+  } catch {}
+}
+
+// Real purchase flow through Google Play
+async function buyProWithPlay() {
+  try {
+    const service = await getPlayBillingService();
+    if (!service) { showToast('Google Play Billing unavailable'); return; }
+    const details = await service.getDetails([PRO_SKU]);
+    if (!details || details.length === 0) { showToast('Product not available yet — try again later'); return; }
+    const request = new PaymentRequest(
+      [{ supportedMethods: PLAY_BILLING_URL, data: { sku: PRO_SKU } }],
+      { total: { label: 'Einstein Clock Pro', amount: { currency: details[0].price.currency, value: details[0].price.value } } }
+    );
+    const response = await request.show();
+    await response.complete('success');
+    unlockPro();
+  } catch (err) {
+    // User cancelled or payment failed — fail quietly with a gentle toast
+    if (err && err.name !== 'AbortError') showToast('Purchase not completed');
+  }
+}
+
+// Real restore — asks Google Play for past purchases on this account
+async function restoreProFromPlay(silent) {
+  try {
+    const service = await getPlayBillingService();
+    if (!service) { if (!silent) showToast('Google Play Billing unavailable'); return false; }
+    const purchases = await service.listPurchases();
+    const owned = purchases && purchases.some(p => p.itemId === PRO_SKU);
+    if (owned) {
+      if (!isPro) unlockPro(); else if (!silent) showToast(TT('Pro already active!','¡Pro ya está activo!'));
+      return true;
+    }
+    if (!silent) showToast(TT('No previous purchase found','No se encontró una compra anterior'));
+    return false;
+  } catch {
+    if (!silent) showToast('Could not check purchases');
+    return false;
+  }
+}
+
+// On startup inside the Play app: silently re-verify ownership.
+// Restores Pro after reinstall, new device, or cleared data.
+if (playBillingAvailable()) {
+  window.addEventListener('load', () => { restoreProFromPlay(true); refreshProPrice(); });
+}
+
+function openProModal() { document.getElementById('pro-modal').classList.add('open'); }
+function closeProModal() { document.getElementById('pro-modal').classList.remove('open'); }
+
+function unlockPro() {
+  isPro = true;
+  localStorage.setItem('einstein_pro', 'true');
+  applyProState();
+  closeProModal();
+  showToast(TT('★ Einstein Clock Pro unlocked!','★ ¡Einstein Clock Pro desbloqueado!'));
+  if (navigator.vibrate) navigator.vibrate([50, 30, 100]);
+}
+
+function applyProState() {
+  if (!isPro) return;
+  document.getElementById('pro-badge-header').classList.add('visible');
+  const ageInput = document.getElementById('input-age');
+  ageInput.disabled = false;
+  ageInput.placeholder = TT('e.g. 35','ej. 35');
+  document.getElementById('age-lock').style.display = 'none';
+  const altInput = document.getElementById('input-altitude');
+  altInput.disabled = false;
+  altInput.placeholder = TT('e.g. 46','ej. 46');
+  document.getElementById('alt-lock').style.display = 'none';
+  const gpsBtn = document.getElementById('gps-btn');
+  gpsBtn.disabled = false;
+  ['lifetime-gate','landmark-gate'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  });
+  document.querySelectorAll('.pro-blurred').forEach(el => el.classList.remove('pro-blurred'));
+  ageInput.addEventListener('input', e => { userAgeYears = parseFloat(e.target.value)||0; saveSettings(); updateLifetime(); });
+  altInput.addEventListener('input', e => { const v=parseFloat(e.target.value); if(!isNaN(v)){userAltitudeFt=v; saveSettings(); updateLandmarks(); updateLifetime(); } });
+  gpsBtn.addEventListener('click', handleGPS);
+  updateLifetime();
+  updateLandmarks();
+  if (typeof refreshThemeLocks === 'function') refreshThemeLocks();
+}
+
+// ── SETTINGS PERSISTENCE ───────────────────────────────────────────
+function saveSettings() {
+  localStorage.setItem('ec_height', userHeightFt);
+  if (isPro) {
+    localStorage.setItem('ec_age', userAgeYears);
+    localStorage.setItem('ec_alt', userAltitudeFt);
+  }
+}
+
+function loadSettings() {
+  const h = localStorage.getItem('ec_height');
+  if (h) { userHeightFt = parseFloat(h); document.getElementById('input-height').value = h; }
+  if (isPro) {
+    const a = localStorage.getItem('ec_age');
+    const alt = localStorage.getItem('ec_alt');
+    if (a) { userAgeYears = parseFloat(a); document.getElementById('input-age').value = a; }
+    if (alt) { userAltitudeFt = parseFloat(alt); document.getElementById('input-altitude').value = Math.round(parseFloat(alt)); }
+  }
+}
+
+// ── TODAY'S TOTAL CALCULATION ──────────────────────────────────────
+function getTodayNs() {
+  const now = new Date();
+  const midnightMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const secondsSinceMidnight = (now.getTime() - midnightMs) / 1000;
+  return calcDilationRate() * secondsSinceMidnight;
+}
+
+// ── FUN FACTS ──────────────────────────────────────────────────────
+const FUN_FACTS = [
+  () => `Light travels ${((dilationGapNs/NS_PER_S)*C*1000).toFixed(2)} mm in your gap`,
+  () => `Your gap is ${((calcDilationRate()*3600)).toFixed(6)} ns per hour`,
+  () => `GPS satellites drift 38,400 ns/day — yours is tiny but real`,
+  () => `Einstein predicted this in 1915. Proven in 2010 at 33 cm.`,
+  () => `At Mt. Everest, you'd accumulate ${((G*EVEREST_M/(C*C))*NS_PER_S*86400).toFixed(2)} ns/day`,
+  () => `Your gap keeps growing every second you breathe`,
+  () => `Time itself is bending around your body right now`,
+];
+let factIndex = 0;
+function rotateFact() {
+  const el = document.getElementById('gap-fact');
+  el.style.opacity = '0';
+  setTimeout(() => {
+    const FF = (CUR_LANG()==='es' && window.FUN_FACTS_ES) ? window.FUN_FACTS_ES : FUN_FACTS;
+    el.textContent = FF[factIndex % FF.length]();
+    factIndex++;
+    el.style.opacity = '1';
+  }, 500);
+}
+
+// ── MILESTONE TRACKING ─────────────────────────────────────────────
+const MILESTONES = [1, 10, 100, 1000, 10000];
+let nextMilestone = 0;
+function checkMilestones() {
+  if (nextMilestone >= MILESTONES.length) return;
+  if (dilationGapNs >= MILESTONES[nextMilestone]) {
+    // Flash the gap block — toast is handled by achievements to avoid double notification
+    document.getElementById('gap-block').classList.add('milestone-flash');
+    setTimeout(() => document.getElementById('gap-block').classList.remove('milestone-flash'), 1000);
+    nextMilestone++;
+    // One-time gentle Pro discovery hint at the first milestone (never repeats)
+    if (!isPro && !localStorage.getItem('ec_pro_hint_shown')) {
+      localStorage.setItem('ec_pro_hint_shown', 'true');
+      setTimeout(() => showToast(TT('★ Pro shows your LIFETIME gap — since the day you were born','★ Pro muestra tu brecha DE VIDA — desde el día que naciste')), 1600);
+    }
+  }
+}
+
+// ── STATE ──────────────────────────────────────────────────────────
+let dilationGapNs = 0, lastTimestamp = null;
+let userAgeYears = 0, userHeightFt = 5.8, userAltitudeFt = 46;
+let wakeLock = null;
+
+// ── DOM ────────────────────────────────────────────────────────────
+const elHeadH = document.getElementById('head-hour'), elHeadM = document.getElementById('head-min'), elHeadS = document.getElementById('head-sec');
+const elFeetH = document.getElementById('feet-hour'), elFeetM = document.getElementById('feet-min'), elFeetS = document.getElementById('feet-sec');
+const elDigHead = document.getElementById('dig-head'), elDigFeet = document.getElementById('dig-feet');
+const elGapVal = document.getElementById('gap-value');
+const elLifeVal = document.getElementById('lifetime-value'), elLifeSub = document.getElementById('lifetime-sub');
+const elWakeStatus = document.getElementById('wake-status');
+
+// ── CLOCK MARKS ────────────────────────────────────────────────────
+function drawMarks(gId, color) {
+  const g = document.getElementById(gId);
+  for (let i = 0; i < 60; i++) {
+    const a = (i/60)*2*Math.PI - Math.PI/2;
+    const isH = i%5===0;
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', 100+(isH?76:82)*Math.cos(a)); line.setAttribute('y1', 100+(isH?76:82)*Math.sin(a));
+    line.setAttribute('x2', 100+87*Math.cos(a)); line.setAttribute('y2', 100+87*Math.sin(a));
+    line.setAttribute('stroke', color); line.setAttribute('stroke-width', isH?'2':'0.8');
+    line.setAttribute('stroke-opacity', isH?'0.8':'0.3');
+    g.appendChild(line);
+  }
+}
+drawMarks('head-marks','#c9a84c'); drawMarks('feet-marks','#b8c0cc');
+
+// ── PHYSICS ────────────────────────────────────────────────────────
+function calcDilationRate() {
+  const hDiffM = userHeightFt * FT_TO_M;
+  const altM = userAltitudeFt * FT_TO_M;
+  return (G * hDiffM * (1 - 2*altM/EARTH_R) / (C*C)) * NS_PER_S;
+}
+
+function setHand(el, deg) {
+  const rad = (deg-90)*Math.PI/180;
+  const isSec = el===elHeadS||el===elFeetS, isMin = el===elHeadM||el===elFeetM;
+  const len = isSec?72:isMin?66:54;
+  el.setAttribute('x2', 100+len*Math.cos(rad)); el.setAttribute('y2', 100+len*Math.sin(rad));
+  if (isSec) { el.setAttribute('x1', 100-16*Math.cos(rad)); el.setAttribute('y1', 100-16*Math.sin(rad)); }
+  else { el.setAttribute('x1', 100); el.setAttribute('y1', 100); }
+}
+
+function formatTime(d) {
+  const h = d.getHours(), ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return String(h12).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0') + ' ' + ampm;
+}
+
+function formatNs(ns) {
+  if (ns < 1000) return ns.toFixed(6);
+  if (ns < 1e6)  return (ns/1000).toFixed(6)+' μs';
+  if (ns < 1e9)  return (ns/1e6).toFixed(6)+' ms';
+  return (ns/1e9).toFixed(9)+' s';
+}
+
+function updateLifetime() {
+  if (!isPro) return;
+  if (!userAgeYears||userAgeYears<=0) { elLifeVal.textContent=TT('Enter age above','Ingresa tu edad arriba'); return; }
+  const ns = calcDilationRate()*userAgeYears*365.25*24*3600;
+  elLifeVal.textContent = formatNs(ns);
+  elLifeSub.textContent = `In ${userAgeYears} years, your head aged ~${formatNs(ns)} more than your feet`;
+}
+
+function updateLandmarks() {
+  if (!isPro) return;
+  const r = calcDilationRate(), rd = r*86400;
+  const gpsRatio = rd > 0 ? Math.round(38400/rd) : 0;
+  document.getElementById('lm-gps').textContent = rd > 0 ? '1/' + gpsRatio.toLocaleString() + ' of GPS drift' : '—';
+  const lm = (dilationGapNs/NS_PER_S)*C;
+  document.getElementById('lm-light').textContent = lm<1?(lm*1000).toFixed(2)+' mm':lm<1000?lm.toFixed(3)+' m':(lm/1000).toFixed(3)+' km';
+  document.getElementById('lm-everest').textContent = ((G*EVEREST_M/(C*C))*NS_PER_S*86400).toFixed(2)+' ns/day';
+  document.getElementById('lm-life').textContent = formatNs(r*80*365.25*24*3600);
+}
+
+// ── MAIN LOOP ──────────────────────────────────────────────────────
+let frameCount = 0;
+function tick(ts) {
+  const now = new Date();
+  if (lastTimestamp!==null) {
+    const dt = Math.min(ts - lastTimestamp, 1000); // cap at 1s to prevent jump after tab hidden
+    dilationGapNs += calcDilationRate() * dt / 1000;
+  }
+  lastTimestamp = ts;
+  frameCount++;
+
+  const head = new Date(now.getTime()+dilationGapNs/1e6);
+  const hS=head.getSeconds()+head.getMilliseconds()/1000, hM=head.getMinutes()+hS/60, hH=(head.getHours()%12)+hM/60;
+  const fS=now.getSeconds()+now.getMilliseconds()/1000, fM=now.getMinutes()+fS/60, fH=(now.getHours()%12)+fM/60;
+
+  setHand(elHeadH,hH/12*360); setHand(elHeadM,hM/60*360); setHand(elHeadS,hS/60*360);
+  setHand(elFeetH,fH/12*360); setHand(elFeetM,fM/60*360); setHand(elFeetS,fS/60*360);
+
+  elDigHead.textContent = formatTime(head);
+  elDigFeet.textContent = formatTime(now);
+  elGapVal.textContent = formatNs(dilationGapNs);
+
+  // Today's total
+  document.getElementById('today-value').textContent = formatNs(getTodayNs());
+
+  // Data panel
+  document.getElementById('dp-time').textContent = formatTime(now);
+  document.getElementById('dp-rate').textContent = (calcDilationRate()*3600).toFixed(6)+' ns/hr';
+  document.getElementById('dp-alt').textContent = Math.round(userAltitudeFt)+' ft';
+  document.getElementById('dp-hdiff').textContent = userHeightFt.toFixed(1)+' ft';
+
+  // Landmark light update
+  if (isPro) {
+    const lmLight = document.getElementById('lm-light');
+    if (lmLight) {
+      const lm=(dilationGapNs/NS_PER_S)*C;
+      lmLight.textContent = lm<1?(lm*1000).toFixed(2)+' mm':lm<1000?lm.toFixed(3)+' m':(lm/1000).toFixed(3)+' km';
+    }
+  }
+
+  // Milestone check every 60 frames
+  if (frameCount%60===0) checkMilestones();
+
+  requestAnimationFrame(tick);
+}
+
+// ── WAKE LOCK ──────────────────────────────────────────────────────
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    elWakeStatus.textContent = TT('● SCREEN STAY-AWAKE ACTIVE','● PANTALLA SIEMPRE ACTIVA');
+    elWakeStatus.classList.add('active');
+    wakeLock.addEventListener('release', () => { elWakeStatus.textContent=TT('● SCREEN LOCK INACTIVE','● PANTALLA SIN MANTENER ACTIVA'); elWakeStatus.classList.remove('active'); });
+  } catch(e) {}
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    requestWakeLock();
+    lastTimestamp = null; // reset so tick doesn't count hidden time as dilation
+  }
+});
+
+// ── GPS ────────────────────────────────────────────────────────────
+function handleGPS() {
+  if (!navigator.geolocation) { showToast('GPS not available'); return; }
+  const btn = document.getElementById('gps-btn');
+  btn.textContent = '⏳ Locating…';
+  navigator.geolocation.getCurrentPosition(pos => {
+    const altM = pos.coords.altitude;
+    if (altM!==null&&altM!==undefined) {
+      userAltitudeFt = altM/FT_TO_M;
+      document.getElementById('input-altitude').value = Math.round(userAltitudeFt);
+      document.getElementById('alt-status').style.display='block';
+      document.getElementById('alt-status').textContent=`✓ GPS: ${Math.round(userAltitudeFt)} ft above sea level`;
+      saveSettings(); updateLandmarks(); updateLifetime();
+      showToast(TT('Altitude set from GPS','Altitud establecida por GPS'));
+    } else { showToast(TT('GPS altitude unavailable — enter manually','Altitud GPS no disponible — ingrésala manualmente')); }
+    btn.textContent='📍 GPS';
+  }, ()=>{ btn.textContent='📍 GPS'; showToast(TT('GPS denied — enter manually','GPS denegado — ingrésala manualmente')); }, {enableHighAccuracy:true,timeout:10000});
+}
+
+// ── SHARE ──────────────────────────────────────────────────────────
+function handleShare() {
+  if (!isPro) { openProModal(); return; }
+  document.getElementById('sc-gap').textContent = formatNs(dilationGapNs);
+  const r = calcDilationRate()*3600;
+  let fact = `At ${Math.round(userAltitudeFt)} ft, my head ages ${r.toFixed(6)} ns/hr faster than my feet.`;
+  if (userAgeYears>0) fact += `\n\nIn my ${userAgeYears} years, my head has aged ${formatNs(calcDilationRate()*userAgeYears*365.25*24*3600)} more than my feet.`;
+  document.getElementById('sc-fact').textContent = fact;
+  document.getElementById('share-modal').classList.add('open');
+}
+
+// ── EVENT LISTENERS ────────────────────────────────────────────────
+document.getElementById('pro-buy-btn').addEventListener('click', () => {
+  if (playBillingAvailable()) {
+    buyProWithPlay();
+  } else {
+    // Plain web browser (not the Play Store app) — direct to Play for purchase
+    showToast(TT('Get the app on Google Play to upgrade','Consigue la app en Google Play para mejorar'));
+    window.open(PLAY_STORE_LISTING, '_blank');
+  }
+});
+document.getElementById('pro-restore-btn').addEventListener('click', () => {
+  if (playBillingAvailable()) {
+    restoreProFromPlay(false);
+  } else if (localStorage.getItem('einstein_pro') === 'true') {
+    unlockPro(); showToast(TT('Purchase restored!','¡Compra restaurada!'));
+  } else {
+    showToast(TT('No previous purchase found','No se encontró una compra anterior'));
+  }
+});
+document.getElementById('pro-modal-close').addEventListener('click', closeProModal);
+document.getElementById('pro-modal').addEventListener('click', e => { if(e.target===document.getElementById('pro-modal')) closeProModal(); });
+document.getElementById('share-close').addEventListener('click', () => document.getElementById('share-modal').classList.remove('open'));
+document.getElementById('close-share-btn').addEventListener('click', () => document.getElementById('share-modal').classList.remove('open'));
+document.getElementById('copy-share-btn').addEventListener('click', async () => {
+  const text = `🕰️ Einstein Time Dilation Timepiece\n\nMy head clock is ${formatNs(dilationGapNs)} ahead of my feet.\nAt ${Math.round(userAltitudeFt)} ft, my head ages ${(calcDilationRate()*3600).toFixed(6)} ns/hr faster.\n\nGet it on Google Play: play.google.com/store/apps/details?id=com.einsteintimepiece.app\nUS Prov. Pat. App. No. 64/080,303`;
+  if (navigator.share) { try { await navigator.share({title:'Einstein Time Dilation Timepiece',text}); showToast(TT('Shared!','¡Compartido!')); } catch{} }
+  else { try { await navigator.clipboard.writeText(text); showToast(TT('Copied!','¡Copiado!')); } catch{ showToast('Copy failed'); } }
+});
+
+document.getElementById('input-height').addEventListener('input', e => {
+  const v=parseFloat(e.target.value);
+  if(v>0){
+    userHeightFt=v;
+    saveSettings();
+    updateLandmarks();
+    updateLifetime();
+    document.getElementById('gap-label').textContent = 'Your Head Ahead of Your Feet';
+  }
+});
+document.getElementById('einstein-toggle').addEventListener('click', () => {
+  const c=document.getElementById('einstein-content'), t=document.getElementById('einstein-toggle');
+  c.classList.toggle('open'); t.classList.toggle('open', c.classList.contains('open'));
+});
+document.getElementById('reset-btn').addEventListener('click', () => { dilationGapNs=0; nextMilestone=0; showToast(TT('Dilation gap reset','Brecha de dilatación reiniciada')); });
+
+
+
+
+// ── CLOCK FACE THEMES (Pro feature) ────────────────────────────────
+const CLOCK_THEMES = {
+  classic:  { rim: '#c9a84c', hand: '#c9a84c', glow: 'rgba(201,168,76,0.2)' },
+  rose:     { rim: '#d98e8e', hand: '#d98e8e', glow: 'rgba(217,142,142,0.2)' },
+  midnight: { rim: '#4a9eff', hand: '#4a9eff', glow: 'rgba(74,158,255,0.2)' },
+  emerald:  { rim: '#3fbf85', hand: '#3fbf85', glow: 'rgba(63,191,133,0.2)' }
+};
+
+function applyClockTheme(name) {
+  const t = CLOCK_THEMES[name] || CLOCK_THEMES.classic;
+  const svg = document.getElementById('svg-head');
+  if (svg) {
+    const circles = svg.querySelectorAll('circle');
+    if (circles[0]) circles[0].setAttribute('stroke', t.rim);
+    if (circles[1]) circles[1].setAttribute('stroke', t.glow);
+    if (circles[2]) circles[2].setAttribute('fill', t.rim);
+    const hour = document.getElementById('head-hour');
+    if (hour) hour.setAttribute('stroke', t.hand);
+    document.querySelectorAll('#head-marks line').forEach(l => l.setAttribute('stroke', t.rim));
+  }
+  const dig = document.getElementById('dig-head');
+  if (dig) { dig.style.color = t.rim; dig.style.borderColor = t.glow; }
+  const headLabel = document.querySelector('.watch-label.head');
+  if (headLabel) headLabel.style.color = t.rim;
+  const gapVal = document.getElementById('gap-value');
+  if (gapVal) gapVal.style.color = t.rim;
+  // Mark active swatch
+  document.querySelectorAll('.theme-swatch').forEach(b => {
+    b.style.borderColor = b.dataset.theme === name ? '#e8e8f0' : (b.dataset.theme === 'classic' ? '#c9a84c' : 'transparent');
+  });
+  localStorage.setItem('ec_theme', name);
+}
+
+function refreshThemeLocks() {
+  document.querySelectorAll('.theme-swatch .theme-lock').forEach(l => { l.style.display = isPro ? 'none' : 'block'; });
+}
+
+document.querySelectorAll('.theme-swatch').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const name = btn.dataset.theme;
+    if (name !== 'classic' && !isPro) { openProModal(); return; }
+    applyClockTheme(name);
+    if (name !== 'classic') showToast(TT('Clock face applied!','¡Esfera aplicada!'));
+  });
+});
+
+// Restore saved theme on startup (Pro themes only restore for Pro owners)
+(function initTheme(){
+  const saved = localStorage.getItem('ec_theme') || 'classic';
+  applyClockTheme((saved !== 'classic' && !isPro) ? 'classic' : saved);
+  refreshThemeLocks();
+})();
+
+// ── DAILY REMINDER (privacy-safe, on-device only) ──────────────────
+const REMINDER_KEY = 'ec_reminder';
+
+async function writeReminderConfig() {
+  try {
+    const cache = await caches.open('etdt-config');
+    await cache.put('./reminder-config', new Response(JSON.stringify({
+      enabled: localStorage.getItem(REMINDER_KEY) === 'on',
+      lang: CUR_LANG()
+    })));
+  } catch(e) {}
+}
+
+function updateReminderUI() {
+  const btn = document.getElementById('reminder-btn');
+  if (!btn) return;
+  const on = localStorage.getItem(REMINDER_KEY) === 'on';
+  btn.textContent = on ? '🔔' : '🔕';
+  btn.style.color = on ? '#c9a84c' : '#8a6f2e';
+}
+
+async function toggleReminder() {
+  const on = localStorage.getItem(REMINDER_KEY) === 'on';
+  if (on) {
+    localStorage.setItem(REMINDER_KEY, 'off');
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg.periodicSync) await reg.periodicSync.unregister('daily-reminder');
+    } catch(e) {}
+    await writeReminderConfig();
+    updateReminderUI();
+    showToast(TT('Daily reminder off','Recordatorio diario apagado'));
+    return;
+  }
+  // Turning on: need notification permission
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { showToast(TT('Notifications not allowed','Notificaciones no permitidas')); return; }
+    localStorage.setItem(REMINDER_KEY, 'on');
+    const reg = await navigator.serviceWorker.ready;
+    if (reg.periodicSync) {
+      try { await reg.periodicSync.register('daily-reminder', { minInterval: 20 * 60 * 60 * 1000 }); } catch(e) {}
+    }
+    await writeReminderConfig();
+    updateReminderUI();
+    showToast(TT('Daily reminder on — keep your streak alive!','Recordatorio diario activado — ¡mantén tu racha viva!'));
+  } catch(e) {
+    showToast(TT('Reminders not supported here','Recordatorios no disponibles aquí'));
+  }
+}
+const _remBtn = document.getElementById('reminder-btn');
+if (_remBtn) { _remBtn.addEventListener('click', toggleReminder); updateReminderUI(); writeReminderConfig(); }
+
+
+// ── WEEKLY PHYSICS QUIZ ────────────────────────────────────────────
+const QUIZ_EN = [
+  { q: "Where does time run faster?", o: ["On a mountain top","At sea level","Same everywhere"], a: 0, ex: "Weaker gravity at altitude means clocks tick faster. Mountain dwellers age slightly more!" },
+  { q: "Your head vs. your feet — which ages faster?", o: ["Feet","Head","Neither"], a: 1, ex: "Your head sits in slightly weaker gravity, so it experiences time a tiny bit faster. That's what this app measures!" },
+  { q: "How much must GPS satellites correct their clocks daily?", o: ["38 microseconds","38 seconds","They don't"], a: 0, ex: "Without that 38 μs/day correction, GPS would drift about 10 km per day." },
+  { q: "Who published General Relativity in 1915?", o: ["Isaac Newton","Niels Bohr","Albert Einstein"], a: 2, ex: "Einstein worked it out alone, with pure mathematics — confirmed by experiment decades later." },
+  { q: "What slows the passage of time?", o: ["Cold temperatures","Stronger gravity","Darkness"], a: 1, ex: "The stronger the gravitational field, the slower time flows. Near a black hole, it nearly stops." },
+  { q: "The 2010 NIST experiment measured time dilation across just…", o: ["33 centimeters","33 meters","33 kilometers"], a: 0, ex: "Optical atomic clocks detected the difference across a single step's height." },
+  { q: "A twin travels near light speed and returns. They are…", o: ["Older than their twin","Younger than their twin","The same age"], a: 1, ex: "High speed slows the traveler's time — the famous Twin Paradox, and it's real physics." },
+  { q: "To someone far away, time near a black hole appears to…", o: ["Speed up","Stop completely at the horizon","Run normally"], a: 1, ex: "At the event horizon, outside observers would see clocks freeze entirely." },
+  { q: "What bends starlight passing near the Sun?", o: ["Solar wind","Curved spacetime","Magnetic fields"], a: 1, ex: "Mass curves spacetime, and light follows the curve — proven during the 1919 eclipse." },
+  { q: "Earth's core, after billions of years of time dilation, is…", o: ["2.5 years younger than the surface","2.5 years older","The same age"], a: 0, ex: "Deeper in Earth's gravity well, the core's clocks have run slower since the planet formed." }
+];
+const QUIZ_ES = [
+  { q: "¿Dónde corre más rápido el tiempo?", o: ["En la cima de una montaña","Al nivel del mar","Igual en todas partes"], a: 0, ex: "Con menos gravedad en la altura, los relojes avanzan más rápido. ¡Los montañeses envejecen un poquito más!" },
+  { q: "Tu cabeza vs. tus pies — ¿cuál envejece más rápido?", o: ["Los pies","La cabeza","Ninguno"], a: 1, ex: "Tu cabeza está en gravedad ligeramente más débil, así que experimenta el tiempo un poquito más rápido. ¡Eso es lo que mide esta app!" },
+  { q: "¿Cuánto deben corregir sus relojes los satélites GPS cada día?", o: ["38 microsegundos","38 segundos","No corrigen nada"], a: 0, ex: "Sin esa corrección de 38 μs/día, el GPS se desviaría unos 10 km por día." },
+  { q: "¿Quién publicó la Relatividad General en 1915?", o: ["Isaac Newton","Niels Bohr","Albert Einstein"], a: 2, ex: "Einstein la desarrolló solo, con matemáticas puras — confirmada por experimentos décadas después." },
+  { q: "¿Qué hace que el tiempo pase más lento?", o: ["Las temperaturas frías","Una gravedad más fuerte","La oscuridad"], a: 1, ex: "Cuanto más fuerte el campo gravitacional, más lento fluye el tiempo. Cerca de un agujero negro, casi se detiene." },
+  { q: "El experimento del NIST en 2010 midió la dilatación a través de solo…", o: ["33 centímetros","33 metros","33 kilómetros"], a: 0, ex: "Relojes atómicos ópticos detectaron la diferencia a la altura de un escalón." },
+  { q: "Un gemelo viaja cerca de la velocidad de la luz y regresa. Está…", o: ["Más viejo que su gemelo","Más joven que su gemelo","De la misma edad"], a: 1, ex: "La alta velocidad frena el tiempo del viajero — la famosa Paradoja de los Gemelos, y es física real." },
+  { q: "Para alguien lejano, el tiempo cerca de un agujero negro parece…", o: ["Acelerarse","Detenerse por completo en el horizonte","Correr normal"], a: 1, ex: "En el horizonte de eventos, los observadores externos verían los relojes congelarse por completo." },
+  { q: "¿Qué curva la luz de las estrellas al pasar cerca del Sol?", o: ["El viento solar","El espacio-tiempo curvado","Los campos magnéticos"], a: 1, ex: "La masa curva el espacio-tiempo, y la luz sigue la curva — comprobado en el eclipse de 1919." },
+  { q: "El núcleo de la Tierra, tras miles de millones de años de dilatación, es…", o: ["2.5 años más joven que la superficie","2.5 años más viejo","De la misma edad"], a: 0, ex: "Más profundo en el pozo de gravedad terrestre, los relojes del núcleo han corrido más lento desde que se formó el planeta." }
+];
+
+function quizWeekIndex() {
+  const d = new Date();
+  const dayOfYear = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+  return { idx: Math.floor(dayOfYear / 7) % QUIZ_EN.length, key: 'ec_quiz_' + d.getFullYear() + '_' + Math.floor(dayOfYear / 7) };
+}
+
+function renderQuiz() {
+  const block = document.getElementById('quiz-block');
+  if (!block) return;
+  const { idx, key } = quizWeekIndex();
+  const data = (CUR_LANG() === 'es' ? QUIZ_ES : QUIZ_EN)[idx];
+  document.getElementById('quiz-title').textContent = TT('🧪 Weekly Physics Quiz','🧪 Quiz Semanal de Física');
+  document.getElementById('quiz-week').textContent = TT('new question every week','nueva pregunta cada semana');
+  document.getElementById('quiz-question').textContent = data.q;
+  const optsEl = document.getElementById('quiz-options');
+  const fb = document.getElementById('quiz-feedback');
+  optsEl.innerHTML = ''; 
+  const answered = localStorage.getItem(key); // '0'|'1'|'2' chosen index, or null
+  data.o.forEach((opt, i) => {
+    const b = document.createElement('button');
+    b.textContent = opt;
+    b.style.cssText = 'background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-ui);font-size:12px;padding:9px 12px;cursor:pointer;text-align:left;transition:all 0.2s;';
+    if (answered !== null) {
+      b.disabled = true;
+      if (i === data.a) { b.style.borderColor = '#4ade80'; b.style.color = '#4ade80'; }
+      else if (i === parseInt(answered) && i !== data.a) { b.style.borderColor = '#f87171'; b.style.color = '#f87171'; }
+      else { b.style.opacity = '0.5'; }
+    } else {
+      b.addEventListener('click', () => {
+        localStorage.setItem(key, String(i));
+        if (i === data.a) { showToast(TT('🎯 Correct!','🎯 ¡Correcto!')); if (navigator.vibrate) navigator.vibrate(40); }
+        else { showToast(TT('Not quite — see the answer','Casi — mira la respuesta')); }
+        renderQuiz();
+      });
+    }
+    optsEl.appendChild(b);
+  });
+  if (answered !== null) {
+    fb.style.display = 'block';
+    const correct = parseInt(answered) === data.a;
+    fb.textContent = (correct ? TT('✓ Correct! ','✓ ¡Correcto! ') : TT('✗ The answer is: ','✗ La respuesta es: ') + data.o[data.a] + '. ') + data.ex;
+  } else {
+    fb.style.display = 'none';
+  }
+}
+renderQuiz();
+
+// ── NIGHT MODE ─────────────────────────────────────────────────────
+let nightShiftTimer = null;
+function enterNightMode() {
+  document.body.classList.add('night-mode');
+  requestWakeLock();
+  // Anti burn-in: shift the clocks a few pixels every minute
+  let shift = 0;
+  nightShiftTimer = setInterval(() => {
+    shift = (shift + 1) % 4;
+    const w = document.querySelector('.watches-wrapper');
+    if (w) w.style.transform = 'scale(1.12) translate(' + (shift % 2 === 0 ? 0 : 6) + 'px,' + (shift < 2 ? 0 : 6) + 'px)';
+  }, 60000);
+  // Exit on any tap (next tick so this tap doesn't immediately exit)
+  setTimeout(() => document.body.addEventListener('click', exitNightMode, { once: true }), 400);
+}
+function exitNightMode() {
+  document.body.classList.remove('night-mode');
+  const w = document.querySelector('.watches-wrapper');
+  if (w) w.style.transform = '';
+  if (nightShiftTimer) { clearInterval(nightShiftTimer); nightShiftTimer = null; }
+}
+document.getElementById('night-btn').addEventListener('click', e => { e.stopPropagation(); enterNightMode(); });
+
+// ── REMINDER ONBOARDING CARD (once, from day 2) ────────────────────
+function maybeShowReminderCard() {
+  const card = document.getElementById('reminder-card');
+  if (!card) return;
+  const prompted = localStorage.getItem('ec_reminder_prompted');
+  const reminderOn = localStorage.getItem(REMINDER_KEY) === 'on';
+  const streak = parseInt(localStorage.getItem('ec_streak') || '0');
+  if (prompted || reminderOn || streak < 2) return;
+  document.getElementById('reminder-card-text').textContent = TT(
+    '🔥 You have a ' + streak + '-day streak! Want a daily reminder so you never lose it?',
+    '🔥 ¡Llevas una racha de ' + streak + ' días! ¿Quieres un recordatorio diario para nunca perderla?');
+  document.getElementById('reminder-card-yes').textContent = TT('Yes, remind me','Sí, recuérdame');
+  document.getElementById('reminder-card-no').textContent = TT('No thanks','No, gracias');
+  card.style.display = 'block';
+  document.getElementById('reminder-card-yes').addEventListener('click', async () => {
+    localStorage.setItem('ec_reminder_prompted', 'true');
+    card.style.display = 'none';
+    await toggleReminder();
+  }, { once: true });
+  document.getElementById('reminder-card-no').addEventListener('click', () => {
+    localStorage.setItem('ec_reminder_prompted', 'true');
+    card.style.display = 'none';
+  }, { once: true });
+}
+window.addEventListener('load', maybeShowReminderCard);
+
+// ── IMAGE SHARE CARD (canvas → PNG → Web Share) ────────────────────
+function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(' ');
+  let line = '', cy = y;
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      ctx.fillText(line, x, cy); line = w; cy += lineHeight;
+    } else { line = test; }
+  }
+  if (line) ctx.fillText(line, x, cy);
+  return cy + lineHeight;
+}
+
+function buildShareImage() {
+  const W = 1080, H = 1350;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+
+  // Background
+  ctx.fillStyle = '#0a0a0f'; ctx.fillRect(0, 0, W, H);
+  // Starfield
+  for (let i = 0; i < 130; i++) {
+    ctx.fillStyle = 'rgba(255,255,255,' + (0.15 + Math.random()*0.5) + ')';
+    const r = Math.random() < 0.9 ? 1.4 : 2.4;
+    ctx.beginPath(); ctx.arc(Math.random()*W, Math.random()*H, r, 0, 7); ctx.fill();
+  }
+  // Gold frame
+  ctx.strokeStyle = 'rgba(201,168,76,0.6)'; ctx.lineWidth = 4;
+  ctx.strokeRect(40, 40, W-80, H-80);
+
+  ctx.textAlign = 'center';
+  // Title
+  ctx.fillStyle = '#c9a84c';
+  ctx.font = 'italic bold 64px Georgia, serif';
+  ctx.fillText('Einstein Time Dilation', W/2, 200);
+  ctx.fillText(TT('Timepiece','Timepiece'), W/2, 280);
+  ctx.fillStyle = 'rgba(232,232,240,0.55)';
+  ctx.font = '26px monospace';
+  ctx.fillText('US PROV. PAT. APP. No. 64/080,303', W/2, 340);
+
+  // Big gap number
+  const gapText = document.getElementById('sc-gap') ? document.getElementById('sc-gap').textContent : formatNs(dilationGapNs);
+  ctx.fillStyle = '#c9a84c';
+  ctx.font = 'bold 120px monospace';
+  ctx.fillText(gapText, W/2, 600);
+  ctx.fillStyle = '#e8e8f0';
+  ctx.font = '32px Georgia, serif';
+  wrapCanvasText(ctx, TT('nanoseconds — my head is older than my feet','nanosegundos — mi cabeza es más vieja que mis pies'), W/2, 680, W-220, 44);
+
+  // Fact text
+  const fact = document.getElementById('sc-fact') ? document.getElementById('sc-fact').textContent : '';
+  ctx.fillStyle = 'rgba(232,232,240,0.85)';
+  ctx.font = 'italic 34px Georgia, serif';
+  wrapCanvasText(ctx, fact, W/2, 830, W-240, 50);
+
+  // Footer branding
+  ctx.fillStyle = '#c9a84c';
+  ctx.font = 'bold 36px Georgia, serif';
+  ctx.fillText(TT('Get it on Google Play','Consíguelo en Google Play'), W/2, H-180);
+  ctx.fillStyle = 'rgba(232,232,240,0.6)';
+  ctx.font = '26px monospace';
+  ctx.fillText('Einstein Clock', W/2, H-130);
+  return cv;
+}
+
+async function shareAsImage() {
+  try {
+    const cv = buildShareImage();
+    const blob = await new Promise(res => cv.toBlob(res, 'image/png'));
+    if (!blob) { showToast(TT('Could not create image','No se pudo crear la imagen')); return; }
+    const file = new File([blob], 'einstein-clock-gap.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Einstein Time Dilation Timepiece' });
+      showToast(TT('Shared!','¡Compartido!'));
+      grantAchievement('shared');
+    } else {
+      // Fallback: download the image
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'einstein-clock-gap.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      showToast(TT('Image downloaded!','¡Imagen descargada!'));
+      grantAchievement('shared');
+    }
+  } catch (err) {
+    if (err && err.name !== 'AbortError') showToast(TT('Share failed','No se pudo compartir'));
+  }
+}
+document.getElementById('share-image-btn').addEventListener('click', shareAsImage);
+
+function showToast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ── DAILY FACTS ────────────────────────────────────────────────────
+const DAILY_FACTS = [
+  { text: "GPS satellites must correct their clocks by exactly 38.4 microseconds every single day — or your navigation would drift by miles.", source: "Source: NASA / GPS Control Segment" },
+  { text: "In 2010, NIST physicists confirmed time dilation across just 33 centimeters of height difference using optical atomic clocks.", source: "Source: NIST, Science Vol. 329" },
+  { text: "A clock on the floor of your house runs measurably slower than a clock on the top shelf. Einstein was right about everything.", source: "Source: General Theory of Relativity, 1915" },
+  { text: "Astronauts on the ISS age about 0.005 seconds slower per 6-month mission — their orbital speed warps time more than the altitude gain.", source: "Source: NASA Human Research Program" },
+  { text: "The black hole in Interstellar (Gargantua) is so massive that 1 hour on its surface equals 7 years on Earth.", source: "Source: Kip Thorne, The Science of Interstellar" },
+  { text: "Your head has been aging faster than your feet since the moment you were born. The gap is tiny — but perfectly real.", source: "Source: Einstein's General Relativity" },
+  { text: "If you lived at the top of Mount Everest your entire life, you'd age about 2,400 microseconds (0.0024 seconds) more than someone at sea level.", source: "Source: Gravitational time dilation calculations" },
+  { text: "Gravity slows time — so the weaker the gravitational field around you, the faster your clocks tick. That's why clocks on mountain tops run faster than at sea level.", source: "Source: Special & General Relativity" },
+  { text: "The Pound-Rebka experiment in 1959 was the first to confirm gravitational time dilation on Earth using a 22.5-meter tower at Harvard.", source: "Source: Physical Review Letters, 1959" },
+  { text: "A muon particle created 15 km above Earth's surface should decay before reaching the ground — but time dilation keeps it alive long enough to detect.", source: "Source: Particle physics, relativistic effects" },
+  { text: "Einstein's special relativity (1905) was about speed. His general relativity (1915) was about gravity. Both warp time — in different ways.", source: "Source: Einstein, Annalen der Physik" },
+  { text: "Gravitational potential varies throughout the universe — every region of space near a massive object experiences time at a slightly different rate, a direct consequence of Einstein's field equations.", source: "Source: Cosmological time dilation" },
+  { text: "The Hafele–Keating experiment (1971) flew atomic clocks around the world in airplanes and confirmed that altitude and speed both dilate time.", source: "Source: Science, Vol. 177, 1972" },
+  { text: "If you could stand at the event horizon of a black hole, time outside would appear to rush forward infinitely fast.", source: "Source: Black hole physics, general relativity" },
+  { text: "The Sun's gravity is strong enough to slow time at its surface by about 6,700 seconds per century relative to Earth — a dramatic demonstration of how mass warps time.", source: "Source: Solar gravitational redshift measurements" },
+  { text: "Identical twins: one stays on Earth, one travels near a black hole for what feels like 5 years — the traveler returns 50 years younger. This is real physics.", source: "Source: The Twin Paradox, Special Relativity" },
+  { text: "Time dilation is not a rounding error — it is a fundamental feature of the universe, confirmed by every precision experiment ever run. It cannot be switched off or explained away.", source: "Source: Causal structure of spacetime" },
+  { text: "Your personal dilation gap in this app is calculated using the same formula used to calibrate satellite navigation systems worldwide.", source: "Source: GPS relativistic corrections" },
+  { text: "The cesium atomic clocks used in GPS satellites are accurate to 1 nanosecond per day. They still require relativistic correction.", source: "Source: GPS Interface Control Document" },
+  { text: "Einstein once said: 'The distinction between past, present, and future is only a stubbornly persistent illusion.' Relativity proves him right.", source: "Source: Albert Einstein, letter to Michele Besso, 1955" },
+  { text: "At the center of the Earth, the gravitational potential is at its lowest — so time actually runs slightly slower there than at the surface, even though you'd be weightless.", source: "Source: Gravitational potential well calculations" },
+  { text: "Light always travels at c in a local frame — but gravity bends its path and stretches its wavelength. Gravitational redshift is what happens to light climbing out of a gravity well. Everything in the universe responds to curved spacetime.", source: "Source: Maxwell's equations + General Relativity" },
+  { text: "If you lived on a neutron star surface, time would pass about 20% slower than for someone floating in open space far away — one of the most extreme examples of gravitational time dilation in the observable universe.", source: "Source: Neutron star gravitational time dilation" },
+  { text: "The GRAVITY telescope confirmed gravitational redshift (time dilation near mass) near the supermassive black hole at our galaxy's center.", source: "Source: ESO GRAVITY Collaboration, 2018" },
+  { text: "The difference in time between your head and feet over a lifetime is real — but too small to ever feel. Only atomic clocks can measure it.", source: "Source: Optical lattice clock experiments" },
+  { text: "The Very Long Baseline Array (VLBA), a network of radio telescopes spanning 8,611 km across the US, must account for relativistic time dilation between its widely separated antennas to produce coherent images.", source: "Source: Gravitational effects on large baseline instruments" },
+  { text: "In 2022, optical atomic clocks confirmed gravitational time dilation across just 1 millimeter of height — the thinnest ever measured.", source: "Source: Nature, optical lattice clock team, 2022" },
+  { text: "The universe is about 13.8 billion years old — but near a massive enough object, those same 13.8 billion years could feel like far less.", source: "Source: Cosmological time dilation" },
+  { text: "Gravitational waves — ripples in spacetime detected by LIGO — travel at the speed of light and briefly distort time as they pass through Earth.", source: "Source: LIGO Scientific Collaboration, 2015" },
+    { text: "Einstein developed General Relativity while working alone, without lab experiments, using pure mathematics and thought experiments. It was confirmed decades later.", source: "Source: History of physics, 1915" },
+  { text: "Mercury's orbit drifts in a way Newton's gravity couldn't explain. Einstein's relativity predicted the drift exactly — his first great confirmation.", source: "Source: Perihelion precession of Mercury" },
+  { text: "In 1919, a solar eclipse expedition proved the Sun bends starlight, exactly as Einstein predicted. He became world-famous overnight.", source: "Source: Eddington expedition, 1919" },
+  { text: "Earth's core is about 2.5 years younger than its surface — billions of years of gravitational time dilation, deep underground.", source: "Source: Geophysics + General Relativity calculations" },
+  { text: "In 1925, astronomers measured gravitational redshift in the light of the white dwarf Sirius B — light losing energy as it climbs out of intense gravity.", source: "Source: W.S. Adams, Mt. Wilson Observatory" },
+  { text: "In 2020, scientists carried an optical clock to the top of Tokyo Skytree and measured time running faster 450 meters up — outside a lab for the first time.", source: "Source: University of Tokyo / RIKEN, 2020" },
+  { text: "Two Galileo navigation satellites accidentally launched into oval orbits became a physics experiment: they confirmed gravitational time dilation to 0.003%.", source: "Source: ESA Galileo eccentric satellites, 2018" },
+  { text: "Gravity Probe B used ultra-precise gyroscopes in orbit to confirm that the spinning Earth literally drags spacetime around with it.", source: "Source: NASA / Stanford, Gravity Probe B" },
+  { text: "The first image of a black hole (2019) showed a shadow whose size matched Einstein's equations — written 104 years earlier.", source: "Source: Event Horizon Telescope" },
+  { text: "Gravity can act as a lens: massive galaxies bend light from objects behind them, sometimes smearing them into perfect 'Einstein rings.'", source: "Source: Gravitational lensing observations" },
+  { text: "Radar signals grazing the Sun arrive measurably late — the Shapiro delay — because they travel through warped, time-slowed space.", source: "Source: Irwin Shapiro, 1964" },
+  { text: "Two neutron stars orbiting each other lose energy exactly as Einstein predicted from gravitational waves — a discovery that won the 1993 Nobel Prize.", source: "Source: Hulse–Taylor binary pulsar" },
+  { text: "In particle accelerators, muons moving near light speed live up to 29 times longer than muons at rest. Speed literally stretches their lifetime.", source: "Source: CERN muon storage ring experiments" },
+  { text: "Time on Mars runs slightly faster than on Earth — weaker gravity means Martian colonists would age a few extra microseconds every day.", source: "Source: Comparative gravitational potential calculations" },
+  { text: "Apollo astronauts experienced both effects at once: speed slowed their clocks, altitude sped them up. The net difference was real and calculable.", source: "Source: Apollo mission relativity analyses" },
+  { text: "Today's best optical lattice clocks would lose less than one second over 15 billion years — longer than the age of the universe.", source: "Source: NIST / JILA optical clocks" },
+  { text: "Clocks are becoming altitude meters: 'chronometric leveling' measures height differences by comparing how fast time flows at each location.", source: "Source: Relativistic geodesy" },
+  { text: "Networks of pulsars across the galaxy act as a cosmic clock array — astronomers compare their ticks to detect spacetime ripples light-years wide.", source: "Source: Pulsar timing arrays / NANOGrav" },
+  { text: "Even Earth's rotation matters: clocks flown east lose time relative to clocks flown west, because Earth's spin adds and subtracts speed.", source: "Source: Hafele–Keating, Sagnac effect" },
+  { text: "Without relativity corrections, your phone's GPS would drift about 10 kilometers per day. You use Einstein's equations every time you navigate.", source: "Source: GPS system engineering" },
+  { text: "Time dilation has no minimum size: every step up a staircase, every elevator ride, every mountain hike changes how fast you age. Physics never sleeps.", source: "Source: General Relativity, applied to daily life" }
+];
+
+function getTodayFactIndex() {
+  const d = new Date();
+  const dayOfYear = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+  return dayOfYear % DAILY_FACTS.length;
+}
+
+function renderDailyFact() {
+  const idx = getTodayFactIndex();
+  const FL = (CUR_LANG()==='es' && window.DAILY_FACTS_ES) ? window.DAILY_FACTS_ES : DAILY_FACTS;
+  const fact = FL[idx];
+  const d = new Date();
+  document.getElementById('daily-fact-text').textContent = fact.text;
+  document.getElementById('daily-fact-source').textContent = fact.source;
+  document.getElementById('daily-fact-date').textContent = d.toLocaleDateString(CUR_LANG()==='es'?'es-MX':'en-US', {month:'short', day:'numeric'});
+
+  // Render navigation dots (show 5 surrounding facts)
+  const dotsEl = document.getElementById('fact-dots');
+  dotsEl.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'fact-dot' + (i === 2 ? ' active' : '');
+    dotsEl.appendChild(dot);
+  }
+}
+
+// ── STREAK TRACKING ────────────────────────────────────────────────
+function updateStreak() {
+  const today = new Date().toDateString();
+  const lastOpen = localStorage.getItem('ec_last_open');
+  let streak = parseInt(localStorage.getItem('ec_streak') || '0');
+  let streakStart = localStorage.getItem('ec_streak_start');
+
+  if (lastOpen === today) {
+    // Already opened today — streak unchanged
+  } else if (lastOpen === new Date(Date.now() - 86400000).toDateString()) {
+    // Opened yesterday — extend streak
+    streak++;
+    localStorage.setItem('ec_streak', streak);
+  } else if (!lastOpen) {
+    streak = 1;
+    streakStart = today;
+    localStorage.setItem('ec_streak', streak);
+    localStorage.setItem('ec_streak_start', streakStart);
+  } else {
+    // Missed a day — reset, new start date
+    streak = 1;
+    streakStart = today;
+    localStorage.setItem('ec_streak', streak);
+    localStorage.setItem('ec_streak_start', streakStart);
+  }
+  localStorage.setItem('ec_last_open', today);
+
+  const suffix = CUR_LANG()==='es' ? (streak === 1 ? 'día seguido' : 'días seguidos') : (streak === 1 ? 'day in a row' : 'days in a row');
+  document.getElementById('streak-value').textContent = `${streak} ${suffix}`;
+
+  const sinceEl = document.getElementById('streak-since');
+  if (sinceEl && streakStart && streak > 1) {
+    const d = new Date(streakStart);
+    sinceEl.textContent = TT('since ','desde ') + d.toLocaleDateString(CUR_LANG()==='es'?'es-MX':'en-US', {month:'short', day:'numeric'});
+  } else if (sinceEl) {
+    sinceEl.textContent = TT('started today','comenzó hoy');
+  }
+  return streak;
+}
+
+// ── ACHIEVEMENTS ───────────────────────────────────────────────────
+const ACHIEVEMENTS_DEF = [
+  { id: 'first_open',   icon: '🌟', name: 'First Observation',     name_es: 'Primera Observación',      desc: 'Open Einstein Clock',             desc_es: 'Abre Einstein Clock',                       secret: false },
+  { id: 'height_set',   icon: '📏', name: 'Calibrated',            name_es: 'Calibrado',                desc: 'Enter your height',               desc_es: 'Ingresa tu estatura',                       secret: false },
+  { id: 'gap_1ns',      icon: '⚡', name: 'First Nanosecond',      name_es: 'Primer Nanosegundo',       desc: 'Accumulate 1 ns of gap',          desc_es: 'Acumula 1 ns de brecha',                    secret: false },
+  { id: 'gap_100ns',    icon: '🔬', name: 'Microsecond Territory', name_es: 'Territorio Microsegundo',  desc: 'Accumulate 100 ns of gap',        desc_es: 'Acumula 100 ns de brecha',                  secret: false },
+  { id: 'gap_1000ns',   icon: '🧬', name: 'Time Warper',           name_es: 'Deformador del Tiempo',    desc: 'Accumulate 1,000 ns of gap',      desc_es: 'Acumula 1,000 ns de brecha',                secret: false },
+  { id: 'streak_3',     icon: '🔥', name: '3-Day Streak',          name_es: 'Racha de 3 Días',          desc: 'Open the app 3 days in a row',    desc_es: 'Abre la app 3 días seguidos',               secret: false },
+  { id: 'streak_7',     icon: '🏅', name: 'Week of Relativity',    name_es: 'Semana de Relatividad',    desc: 'Open the app 7 days in a row',    desc_es: 'Abre la app 7 días seguidos',               secret: false },
+  { id: 'simulator',    icon: '🌌', name: 'Space Traveler',        name_es: 'Viajero Espacial',         desc: 'Use the Time Dilation Simulator', desc_es: 'Usa el Simulador de Dilatación',            secret: false },
+  { id: 'shared',       icon: '📡', name: 'Spread the Word',       name_es: 'Corre la Voz',             desc: 'Share your dilation gap',         desc_es: 'Comparte tu brecha de dilatación',          secret: false },
+  { id: 'pro_unlocked', icon: '⭐', name: 'Einstein Pro',          name_es: 'Einstein Pro',             desc: 'Unlock Einstein Clock Pro',       desc_es: 'Desbloquea Einstein Clock Pro',             secret: false },
+];
+
+let achievementsData = {};
+
+function loadAchievements() {
+  try { achievementsData = JSON.parse(localStorage.getItem('ec_achievements') || '{}'); } catch { achievementsData = {}; }
+}
+
+function saveAchievements() {
+  localStorage.setItem('ec_achievements', JSON.stringify(achievementsData));
+}
+
+function grantAchievement(id) {
+  if (achievementsData[id]) return; // already earned
+  achievementsData[id] = new Date().toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+  saveAchievements();
+  renderAchievements();
+  const def = ACHIEVEMENTS_DEF.find(a => a.id === id);
+  if (def) {
+    showToast(`🏆 Achievement: ${def.name}`);
+    if (navigator.vibrate) navigator.vibrate([30, 20, 60, 20, 30]);
+  }
+}
+
+function renderAchievements() {
+  const grid = document.getElementById('ach-grid');
+  grid.innerHTML = '';
+  let unlocked = 0;
+  ACHIEVEMENTS_DEF.forEach(def => {
+    const earned = achievementsData[def.id];
+    if (earned) unlocked++;
+    const div = document.createElement('div');
+    div.className = 'ach-item ' + (earned ? 'unlocked' : 'locked');
+    div.innerHTML = `<div class="ach-icon">${def.icon}</div>
+      <div class="ach-name">${CUR_LANG()==='es' && def.name_es ? def.name_es : def.name}</div>
+      <div class="ach-desc">${earned ? (CUR_LANG()==='es' && def.desc_es ? def.desc_es : def.desc) : '???'}</div>
+      ${earned ? `<div class="ach-date">${earned}</div>` : ''}`;
+    grid.appendChild(div);
+  });
+  const total = ACHIEVEMENTS_DEF.length;
+  document.getElementById('ach-count').textContent = `${unlocked} / ${total}`;
+  document.getElementById('ach-fill').style.width = `${(unlocked/total)*100}%`;
+}
+
+function checkAchievements(streak) {
+  grantAchievement('first_open');
+  if (userHeightFt > 0 && document.getElementById('input-height').value) grantAchievement('height_set');
+  if (dilationGapNs >= 1)    grantAchievement('gap_1ns');
+  if (dilationGapNs >= 100)  grantAchievement('gap_100ns');
+  if (dilationGapNs >= 1000) grantAchievement('gap_1000ns');
+  if (streak >= 3)  grantAchievement('streak_3');
+  if (streak >= 7)  grantAchievement('streak_7');
+  if (isPro)        grantAchievement('pro_unlocked');
+}
+
+// Hook share achievement — wrap the original inline
+const _origShare = handleShare;
+window.handleShare = function() {
+  _origShare();
+  grantAchievement('shared');
+};
+
+// ── TIME DILATION SIMULATOR ────────────────────────────────────────
+const SIM_LOCATIONS = [
+  { name: 'Earth Surface',      altLabel: '0 ft (sea level)',       gRate: 0,            desc: 'Reference point. All other times are relative to here.' },
+  { name: 'Mt. Everest Summit', altLabel: '29,032 ft (8,849 m)',    gRate: 9.66e-13,     desc: 'At the summit, clocks tick ~83 nanoseconds faster per day than at sea level.' },
+  { name: 'Cruising Altitude',  altLabel: '35,000 ft (10,668 m)',   gRate: 1.16e-12,     desc: 'At cruising altitude, clocks tick ~100 ns faster per day than at sea level.' },
+  { name: 'ISS Orbit',          altLabel: '254 mi (408 km)',        gRate: -2.82e-10,    desc: 'ISS speed dominates over altitude — astronauts actually age ~24 μs slower per day.' },
+  { name: 'Moon Surface',       altLabel: '238,855 mi away',        gRate: 6.60e-10,     desc: 'The Moon\'s weaker gravity means clocks there run ~57 μs faster per day than Earth.' },
+  { name: 'Mars Surface',       altLabel: '141M mi (avg)',          gRate: 2.89e-10,     desc: 'Mars gravity is 38% of Earth\'s — clocks on Mars run faster than Earth by roughly 24–48 μs per day.' },
+  { name: 'Black Hole Edge',    altLabel: 'Event Horizon',          gRate: -0.9999,      desc: 'At the event horizon, time slows to nearly zero — 1 second here = eons outside.' },
+];
+
+let simRunning = false, simEarthMs = 0, simLocMs = 0, simLastTs = null;
+let currentSimIdx = 0;
+
+function formatSimTime(ms) {
+  const totalMs = Math.abs(ms) % (24*3600*1000);
+  const h = Math.floor(totalMs/3600000);
+  const m = Math.floor((totalMs%3600000)/60000);
+  const s = Math.floor((totalMs%60000)/1000);
+  const ms2 = Math.floor(totalMs%1000);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(ms2).padStart(3,'0')}`;
+}
+
+function updateSimDisplay() {
+  const loc = SIM_LOCATIONS[currentSimIdx];
+  document.getElementById('sim-loc-name').textContent = loc.name;
+  document.getElementById('sim-loc-alt').textContent = loc.altLabel;
+  document.getElementById('sim-loc-clock-label').textContent = loc.name.toUpperCase().slice(0,12);
+  document.getElementById('sim-gap-desc').textContent = loc.desc;
+
+  // Calculate daily gap
+  if (currentSimIdx === 0) {
+    document.getElementById('sim-gap-val').textContent = '0 — reference point';
+  } else {
+    const nsPerDay = Math.abs(loc.gRate) * 86400 * 1e9;
+    if (nsPerDay > 1e9) document.getElementById('sim-gap-val').textContent = (nsPerDay/1e9).toFixed(3) + ' s/day';
+    else if (nsPerDay > 1e6) document.getElementById('sim-gap-val').textContent = (nsPerDay/1e6).toFixed(3) + ' ms/day';
+    else if (nsPerDay > 1000) document.getElementById('sim-gap-val').textContent = (nsPerDay/1000).toFixed(3) + ' μs/day';
+    else document.getElementById('sim-gap-val').textContent = nsPerDay.toFixed(2) + ' ns/day';
+  }
+}
+
+function simTick(ts) {
+  if (!simRunning) return;
+  if (simLastTs !== null) {
+    const dt = ts - simLastTs; // ms
+    simEarthMs += dt;
+    const loc = SIM_LOCATIONS[currentSimIdx];
+    simLocMs += dt * (1 + loc.gRate * 86400); // scale gRate to per-ms
+  }
+  simLastTs = ts;
+  document.getElementById('sim-earth-clock').textContent = formatSimTime(simEarthMs);
+  document.getElementById('sim-loc-clock').textContent = formatSimTime(simLocMs);
+  requestAnimationFrame(simTick);
+}
+
+document.getElementById('sim-toggle').addEventListener('click', () => {
+  const c = document.getElementById('sim-content'), t = document.getElementById('sim-toggle');
+  c.classList.toggle('open');
+  t.classList.toggle('open', c.classList.contains('open'));
+  if (c.classList.contains('open') && !simRunning) {
+    simRunning = true;
+    simEarthMs = 0; simLocMs = 0; simLastTs = null;
+    requestAnimationFrame(simTick);
+    grantAchievement('simulator');
+  } else if (!c.classList.contains('open')) {
+    simRunning = false; simLastTs = null;
+  }
+});
+
+document.getElementById('sim-slider').addEventListener('input', e => {
+  currentSimIdx = parseInt(e.target.value);
+  simEarthMs = 0; simLocMs = 0; simLastTs = null;
+  updateSimDisplay();
+});
+
+// ── ACHIEVEMENTS TOGGLE ────────────────────────────────────────────
+document.getElementById('ach-toggle').addEventListener('click', () => {
+  const c = document.getElementById('ach-content'), t = document.getElementById('ach-toggle');
+  c.classList.toggle('open');
+  t.classList.toggle('open', c.classList.contains('open'));
+});
+
+
+// ══════════════════════════════════════════════════════════════════
+// FREEZE TIME GAME
+// ══════════════════════════════════════════════════════════════════
+(function() {
+  // State
+  let fzState = 'idle';   // idle | playing | result
+  let fzTarget = 0;
+  let fzStart = 0;
+  let fzCurrent = 0;
+  let fzRafId = null;
+  let fzRound = 1;
+  let fzScore = 0;
+  let fzStreak = 0;
+  let fzBest = parseFloat(localStorage.getItem('ec_fz_best') || '9999');
+  let fzSpeed = 1.0;      // ns/ms, increases per round
+  let fzFrozen = false;
+
+  // Elements
+  const togBtn   = document.getElementById('freeze-toggle');
+  const content  = document.getElementById('freeze-content');
+  const elIdle   = document.getElementById('freeze-idle');
+  const elPlay   = document.getElementById('freeze-playing');
+  const elResult = document.getElementById('freeze-result');
+  const elTarget = document.getElementById('freeze-target');
+  const elCount  = document.getElementById('freeze-counter');
+  const tapBtn   = document.getElementById('freeze-tap-btn');
+  const startBtn = document.getElementById('freeze-start-btn');
+  const againBtn = document.getElementById('freeze-again-btn');
+  const elBestDisplay = document.getElementById('freeze-best-display');
+  const elRound  = document.getElementById('fz-round');
+  const elScore  = document.getElementById('fz-score');
+  const elStreak = document.getElementById('fz-streak');
+  const elResIcon  = document.getElementById('freeze-result-icon');
+  const elResDiff  = document.getElementById('freeze-result-diff');
+  const elResScore = document.getElementById('freeze-result-score');
+  const elResBest  = document.getElementById('freeze-result-best');
+
+  // Toggle panel
+  togBtn.addEventListener('click', () => {
+    content.classList.toggle('open');
+    togBtn.classList.toggle('open', content.classList.contains('open'));
+    if (fzBest < 9999) elBestDisplay.textContent = fzBest.toFixed(4) + ' ns off';
+  });
+
+  // Format
+  function fmtNs(v) { return v.toFixed(6); }
+
+  // Pick a new random target — always a clean number like X.Y00000 to make it readable
+  function newTarget() {
+    // Counter wraps at 200 — targets must stay 10-180 so they're always reachable
+    // Higher rounds pick from a wider range (harder to predict) but always within wrap
+    const maxTarget = Math.min(10 + fzRound * 14, 170);
+    const base = 10 + Math.random() * (maxTarget - 10);
+    return Math.round(base * 1000) / 1000; // 3 decimal places
+  }
+
+  // Counter animation loop
+  function fzTick(ts) {
+    if (fzFrozen) return;
+    const elapsed = (ts - fzStart);
+    fzCurrent = (elapsed * fzSpeed) % 200; // wraps 0–200 ns
+    elCount.textContent = fmtNs(fzCurrent);
+    fzRafId = requestAnimationFrame(fzTick);
+  }
+
+  function showScreen(name) {
+    elIdle.style.display   = name === 'idle'   ? 'block' : 'none';
+    elPlay.style.display   = name === 'playing' ? 'block' : 'none';
+    elResult.style.display = name === 'result'  ? 'block' : 'none';
+  }
+
+  function startGame() {
+    fzRound = 1; fzScore = 0; fzStreak = 0; fzSpeed = 0.08;
+    startRound();
+  }
+
+  function startRound() {
+    fzFrozen = false;
+    fzTarget = newTarget();
+    elTarget.textContent = fmtNs(fzTarget) + ' ns';
+    elRound.textContent  = fzRound;
+    elScore.textContent  = fzScore;
+    elStreak.textContent = fzStreak;
+    elCount.classList.remove('frozen');
+    showScreen('playing');
+    // Countdown phase: show the target clearly BEFORE the counter starts
+    tapBtn.disabled = true;
+    elCount.textContent = '——————';
+    let count = 3;
+    tapBtn.textContent = TT('MEMORIZE THE TARGET… ','MEMORIZA EL OBJETIVO… ') + count;
+    const cd = setInterval(() => {
+      count--;
+      if (count > 0) {
+        tapBtn.textContent = TT('MEMORIZE THE TARGET… ','MEMORIZA EL OBJETIVO… ') + count;
+      } else {
+        clearInterval(cd);
+        tapBtn.textContent = '⚡ ' + TT('FREEZE','CONGELAR');
+        tapBtn.disabled = false;
+        fzStart = performance.now();
+        fzRafId = requestAnimationFrame(fzTick);
+      }
+    }, 1000);
+  }
+
+  function freeze() {
+    if (fzFrozen) return;
+    fzFrozen = true;
+    cancelAnimationFrame(fzRafId);
+    elCount.classList.add('frozen');
+    tapBtn.disabled = true;
+
+    const diff = Math.abs(fzCurrent - fzTarget);
+    const rounded = Math.round(diff * 10000) / 10000;
+
+    // Score
+    let pts = 0, grade = '';
+    if (diff < 0.01)       { pts = 1000; grade = 'great'; elResIcon.textContent = '🎯'; }
+    else if (diff < 0.1)   { pts = 500;  grade = 'good';  elResIcon.textContent = '⚡'; }
+    else if (diff < 0.5)   { pts = 200;  grade = 'ok';    elResIcon.textContent = '👍'; }
+    else if (diff < 2.0)   { pts = 50;   grade = 'ok';    elResIcon.textContent = '😬'; }
+    else                   { pts = 0;    grade = 'miss';  elResIcon.textContent = '💨'; fzStreak = 0; }
+
+    if (pts > 0) { fzStreak++; pts += fzStreak * 10; } // streak bonus
+    fzScore += pts;
+
+    // Personal best
+    let newBest = false;
+    if (diff < fzBest) { fzBest = diff; localStorage.setItem('ec_fz_best', fzBest); newBest = true; }
+
+    // Result
+    elResDiff.textContent = rounded.toFixed(4) + ' ns off';
+    elResDiff.className = 'freeze-result-diff ' + grade;
+    elResScore.textContent = pts > 0 ? '+' + pts + ' ' + TT('pts','pts') + (fzStreak > 1 ? ' (' + TT('incl. streak bonus','incl. bono de racha') + ' +' + (fzStreak*10) + ')' : '') + '  ' + TT('total:','total:') + ' ' + fzScore : TT('No points — more than 2 ns off!','Sin puntos — ¡más de 2 ns de diferencia!');
+    elResBest.textContent = newBest ? '🏆 New personal best!' : 'Best: ' + fzBest.toFixed(4) + ' ns off';
+    elBestDisplay.textContent = fzBest.toFixed(4) + ' ns off';
+
+    // Speed up next round
+    fzSpeed = Math.min(0.08 + fzRound * 0.015, 0.4);
+    fzRound++;
+
+    setTimeout(() => showScreen('result'), 300);
+  }
+
+  tapBtn.addEventListener('click', freeze);
+  tapBtn.addEventListener('touchstart', e => { e.preventDefault(); freeze(); }, { passive: false });
+  startBtn.addEventListener('click', startGame);
+  againBtn.addEventListener('click', startRound);
+})();
+
+// ══════════════════════════════════════════════════════════════════
+// EVOLUTION CREATURE
+// ══════════════════════════════════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('creature-canvas');
+  const ctx    = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // Stages: unlocked by days of streak
+  const STAGES = [
+    { name: 'Quantum Speck',    minDays: 0,  color: '#4a9eff', desc: 'A single point of quantum energy, flickering at the edge of existence.' },
+    { name: 'Time Wisp',        minDays: 2,  color: '#7ab8ff', desc: 'A ghostly wisp that bends light around it as it drifts through spacetime.' },
+    { name: 'Dilation Sprout',  minDays: 5,  color: '#4ade80', desc: 'Life stirs. Tendrils of relativistic energy reach outward.' },
+    { name: 'Warp Bloom',       minDays: 10, color: '#c9a84c', desc: 'A radiant bloom of distorted time. It pulses with your heartbeat.' },
+    { name: 'Relativity Moth',  minDays: 20, color: '#e879f9', desc: 'Wings of pure spacetime. It leaves a trail of frozen moments behind it.' },
+    { name: 'Singularity Fox',  minDays: 35, color: '#f97316', desc: 'Cunning and ancient. Its eyes contain entire collapsed stars.' },
+    { name: 'Einstein Dragon',  minDays: 60, color: '#c9a84c', desc: 'The final form. A creature of legend, born from decades of dilation.' },
+  ];
+
+  let t = 0; // animation time
+  let creatureRafId = null;
+
+  function getStageIndex(days) {
+    let idx = 0;
+    for (let i = 0; i < STAGES.length; i++) { if (days >= STAGES[i].minDays) idx = i; }
+    return idx;
+  }
+
+  function getStreak() { return parseInt(localStorage.getItem('ec_streak') || '0'); }
+  function getVisits()  {
+    let v = parseInt(localStorage.getItem('ec_visits') || '0') + 1;
+    localStorage.setItem('ec_visits', v);
+    return v;
+  }
+  function getDays() {
+    const first = localStorage.getItem('ec_first_visit');
+    if (!first) { localStorage.setItem('ec_first_visit', Date.now()); return 0; }
+    return Math.floor((Date.now() - parseInt(first)) / 86400000);
+  }
+
+  // ── DRAWING FUNCTIONS PER STAGE ──────────────────────────────
+  function drawStage0(t, col) {
+    // Quantum speck — pulsing dot with orbiting particle
+    ctx.save();
+    ctx.translate(W/2, H/2);
+    const pulse = 4 + Math.sin(t*3)*2;
+    const grd = ctx.createRadialGradient(0,0,0,0,0,pulse*3);
+    grd.addColorStop(0, col); grd.addColorStop(1, 'transparent');
+    ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(0,0,pulse*3,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(0,0,pulse,0,Math.PI*2); ctx.fill();
+    // orbiting particle
+    const ox = Math.cos(t*2)*30, oy = Math.sin(t*2)*30;
+    ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.7;
+    ctx.beginPath(); ctx.arc(ox,oy,2,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawStage1(t, col) {
+    // Time wisp — flowing shape
+    ctx.save(); ctx.translate(W/2, H/2);
+    for (let i = 0; i < 6; i++) {
+      const ang = (i/6)*Math.PI*2 + t;
+      const r = 20 + Math.sin(t*2+i)*10;
+      const x = Math.cos(ang)*r, y = Math.sin(ang)*r*0.5;
+      ctx.globalAlpha = 0.15 + Math.sin(t+i)*0.08;
+      const grd = ctx.createRadialGradient(x,y,0,x,y,18);
+      grd.addColorStop(0, col); grd.addColorStop(1,'transparent');
+      ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(x,y,18,0,Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(0,0,8+Math.sin(t*4)*2,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawStage2(t, col) {
+    // Dilation sprout — stem + leaves
+    ctx.save(); ctx.translate(W/2, H/2+30);
+    // stem
+    ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.quadraticCurveTo(Math.sin(t)*8,-30,0,-55); ctx.stroke();
+    // leaves
+    for (let i = 0; i < 4; i++) {
+      const side = i%2===0 ? 1 : -1;
+      const yOff = -15 - i*12;
+      const sway = Math.sin(t*1.5+i)*5;
+      ctx.save(); ctx.translate(sway,yOff);
+      ctx.fillStyle = col; ctx.globalAlpha = 0.7;
+      ctx.beginPath();
+      ctx.ellipse(side*18, 0, 16, 8, side*0.5+Math.sin(t+i)*0.1, 0, Math.PI*2);
+      ctx.fill(); ctx.restore();
+    }
+    // glow top
+    ctx.globalAlpha = 0.8+Math.sin(t*3)*0.2;
+    const grd = ctx.createRadialGradient(0,-55,0,0,-55,12);
+    grd.addColorStop(0,col); grd.addColorStop(1,'transparent');
+    ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(0,-55,12,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawStage3(t, col) {
+    // Warp bloom — flower with petals
+    ctx.save(); ctx.translate(W/2, H/2);
+    const petals = 8;
+    for (let i = 0; i < petals; i++) {
+      const ang = (i/petals)*Math.PI*2 + t*0.3;
+      const r = 35 + Math.sin(t*2+i)*5;
+      ctx.save(); ctx.rotate(ang);
+      ctx.globalAlpha = 0.5 + Math.sin(t+i)*0.2;
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.ellipse(r,0,14,7,0,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+    // center
+    ctx.globalAlpha = 1;
+    const grd = ctx.createRadialGradient(0,0,0,0,0,18);
+    grd.addColorStop(0,'#fff'); grd.addColorStop(0.3,col); grd.addColorStop(1,'transparent');
+    ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(0,0,18,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawStage4(t, col) {
+    // Relativity moth — wings
+    ctx.save(); ctx.translate(W/2, H/2);
+    const flap = Math.sin(t*4)*0.3;
+    // wings
+    for (let side of [-1,1]) {
+      ctx.save(); ctx.scale(side,1);
+      ctx.globalAlpha = 0.6+Math.abs(Math.sin(t*4))*0.2;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(0,0);
+      ctx.bezierCurveTo(20+flap*20,-20,60,-10,55,15);
+      ctx.bezierCurveTo(50,35,20,30,0,15);
+      ctx.fill();
+      // wing detail
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(35,0,6,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+    // body
+    ctx.globalAlpha = 1; ctx.fillStyle = col;
+    ctx.beginPath(); ctx.ellipse(0,5,5,14,0,0,Math.PI*2); ctx.fill();
+    // antennae
+    ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.8;
+    ctx.beginPath(); ctx.moveTo(-3,-8); ctx.quadraticCurveTo(-15,-30,-12,-38); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(3,-8);  ctx.quadraticCurveTo(15,-30,12,-38);  ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawStage5(t, col) {
+    // Singularity fox — stylized fox face
+    ctx.save(); ctx.translate(W/2, H/2);
+    const bob = Math.sin(t*1.5)*4;
+    ctx.translate(0, bob);
+    // ears
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.moveTo(-22,-30); ctx.lineTo(-38,-60); ctx.lineTo(-8,-35); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(22,-30);  ctx.lineTo(38,-60);  ctx.lineTo(8,-35);  ctx.fill();
+    // head
+    ctx.beginPath(); ctx.ellipse(0,-15,28,25,0,0,Math.PI*2); ctx.fill();
+    // muzzle
+    ctx.fillStyle = '#f97316';
+    ctx.beginPath(); ctx.ellipse(0,8,14,12,0,0,Math.PI*2); ctx.fill();
+    // eyes — glowing
+    const eyeGlow = 0.7+Math.sin(t*2)*0.3;
+    ctx.fillStyle = `rgba(74,158,255,${eyeGlow})`;
+    ctx.beginPath(); ctx.arc(-10,-18,5,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(10,-18,5,0,Math.PI*2); ctx.fill();
+    // nose
+    ctx.fillStyle = '#1a1a2e';
+    ctx.beginPath(); ctx.arc(0,5,3,0,Math.PI*2); ctx.fill();
+    // tail hint
+    ctx.strokeStyle = col; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(25,20); ctx.quadraticCurveTo(55,0,50,-20); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawStage6(t, col) {
+    // Einstein Dragon — majestic
+    ctx.save(); ctx.translate(W/2, H/2);
+    const bob = Math.sin(t)*5;
+    ctx.translate(0, bob);
+    // body
+    ctx.fillStyle = col; ctx.globalAlpha = 0.9;
+    ctx.beginPath(); ctx.ellipse(0,10,32,22,0,0,Math.PI*2); ctx.fill();
+    // wings — large, sweeping
+    for (let side of [-1,1]) {
+      ctx.save(); ctx.scale(side,1);
+      ctx.globalAlpha = 0.45+Math.sin(t*1.5)*0.15;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(0,-5);
+      ctx.bezierCurveTo(30,-40,80,-35,85,-5);
+      ctx.bezierCurveTo(80,20,35,25,0,15);
+      ctx.fill();
+      ctx.restore();
+    }
+    // neck
+    ctx.globalAlpha = 0.9; ctx.fillStyle = col;
+    ctx.beginPath(); ctx.ellipse(-5,-20,12,18,0.3,0,Math.PI*2); ctx.fill();
+    // head
+    ctx.beginPath(); ctx.ellipse(-8,-42,16,12,0.4,0,Math.PI*2); ctx.fill();
+    // horns
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.globalAlpha = 0.6;
+    ctx.beginPath(); ctx.moveTo(-14,-50); ctx.lineTo(-20,-68); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-4,-52);  ctx.lineTo(-2,-70);  ctx.stroke();
+    // eye
+    const eyePulse = 0.8+Math.sin(t*3)*0.2;
+    ctx.fillStyle = `rgba(255,255,255,${eyePulse})`; ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.arc(-12,-42,4,0,Math.PI*2); ctx.fill();
+    // fire breath
+    ctx.globalAlpha = 0.4+Math.sin(t*5)*0.3;
+    const fire = ctx.createRadialGradient(-35,-42,0,-55,-42,18);
+    fire.addColorStop(0,'#ff6b00'); fire.addColorStop(1,'transparent');
+    ctx.fillStyle = fire; ctx.beginPath(); ctx.arc(-55,-42,18,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  const DRAW_FNS = [drawStage0, drawStage1, drawStage2, drawStage3, drawStage4, drawStage5, drawStage6];
+
+  function updateCreatureUI() {
+    const streak  = getStreak();
+    const days    = getDays();
+    const visits  = parseInt(localStorage.getItem('ec_visits') || '1');
+    const stageIdx = getStageIndex(streak);
+    const stage    = STAGES[stageIdx];
+    const nextStage = STAGES[stageIdx + 1];
+
+    // Progress to next stage
+    let pct = 100;
+    if (nextStage) {
+      const range = nextStage.minDays - stage.minDays;
+      const prog  = streak - stage.minDays;
+      pct = Math.min(100, Math.round((prog / range) * 100));
+    }
+
+    document.getElementById('creature-days').textContent = days;
+    document.getElementById('creature-stage-label').textContent = stage.name;
+    document.getElementById('creature-status').textContent = stage.desc;
+    document.getElementById('creature-progress-fill').style.width = pct + '%';
+    document.getElementById('creature-stage-name').textContent = 'Stage ' + (stageIdx+1);
+    document.getElementById('creature-next-label').textContent = nextStage ? nextStage.minDays + ' day streak to evolve' : 'MAX EVOLUTION';
+    document.getElementById('cs-streak').textContent = streak;
+    document.getElementById('cs-stage').textContent = stageIdx + 1;
+    document.getElementById('cs-visits').textContent = visits;
+
+    return { stageIdx, stage };
+  }
+
+  // Cache UI state — update every 2s not every frame
+  let cachedStageIdx = 0, cachedColor = '#4a9eff';
+  function refreshCreatureUI() {
+    const r = updateCreatureUI();
+    cachedStageIdx = r.stageIdx;
+    cachedColor = r.stage.color;
+  }
+  refreshCreatureUI();
+  setInterval(refreshCreatureUI, 2000);
+
+  function animateCreature() {
+    ctx.clearRect(0, 0, W, H);
+    DRAW_FNS[cachedStageIdx](t, cachedColor);
+    t += 0.03;
+    creatureRafId = requestAnimationFrame(animateCreature);
+  }
+
+  // Start animation
+  getVisits(); // count this visit
+  animateCreature();
+})();
+
+// ── INIT ───────────────────────────────────────────────────────────
+requestWakeLock();
+if (isPro) applyProState();
+loadSettings();
+requestAnimationFrame(tick);
+
+// Rotate fun facts — delay 3s so gap has time to accumulate first
+setTimeout(() => { rotateFact(); setInterval(rotateFact, 8000); }, 3000);
+
+// Onboarding hint — hide once height entered
+(function() {
+  const hint = document.getElementById('onboard-hint');
+  if (!hint) return;
+  if (localStorage.getItem('ec_height')) { hint.style.display = 'none'; return; }
+  document.getElementById('input-height').addEventListener('input', () => {
+    hint.style.display = 'none';
+  }, { once: true });
+})();
+
+// Init new features
+loadAchievements();
+renderAchievements();
+renderDailyFact();
+updateSimDisplay();
+const currentStreak = updateStreak();
+checkAchievements(currentStreak);
+
+// Check gap-based achievements every 5 seconds
+setInterval(() => checkAchievements(parseInt(localStorage.getItem('ec_streak')||'0')), 5000);
+
+// Height achievement
+document.getElementById('input-height').addEventListener('change', () => {
+  if (parseFloat(document.getElementById('input-height').value) > 0) grantAchievement('height_set');
+});
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
+</script>
+
+<script>
+// ════════════════ SPANISH LANGUAGE LAYER ════════════════
+window.DAILY_FACTS_ES = [
+  { text: "Los satélites GPS deben corregir sus relojes exactamente 38.4 microsegundos cada día — o tu navegación se desviaría por millas.", source: "Fuente: NASA / Segmento de Control GPS" },
+  { text: "En 2010, físicos del NIST confirmaron la dilatación del tiempo a través de solo 33 centímetros de diferencia de altura usando relojes atómicos ópticos.", source: "Fuente: NIST, Science Vol. 329" },
+  { text: "Un reloj en el piso de tu casa corre más lento — de forma medible — que un reloj en el estante de arriba. Einstein tenía razón en todo.", source: "Fuente: Teoría General de la Relatividad, 1915" },
+  { text: "Los astronautas en la EEI envejecen unos 0.005 segundos menos por misión de 6 meses — su velocidad orbital deforma el tiempo más que la altitud.", source: "Fuente: Programa de Investigación Humana de la NASA" },
+  { text: "El agujero negro de Interestelar (Gargantúa) es tan masivo que 1 hora en su superficie equivale a 7 años en la Tierra.", source: "Fuente: Kip Thorne, La Ciencia de Interestelar" },
+  { text: "Tu cabeza ha envejecido más rápido que tus pies desde el momento en que naciste. La brecha es diminuta — pero perfectamente real.", source: "Fuente: Relatividad General de Einstein" },
+  { text: "Si vivieras en la cima del Monte Everest toda tu vida, envejecerías unos 2,400 microsegundos (0.0024 segundos) más que alguien al nivel del mar.", source: "Fuente: Cálculos de dilatación gravitacional del tiempo" },
+  { text: "La gravedad ralentiza el tiempo — cuanto más débil el campo gravitacional a tu alrededor, más rápido avanzan tus relojes. Por eso los relojes en las montañas corren más rápido que al nivel del mar.", source: "Fuente: Relatividad Especial y General" },
+  { text: "El experimento Pound-Rebka de 1959 fue el primero en confirmar la dilatación gravitacional del tiempo en la Tierra, usando una torre de 22.5 metros en Harvard.", source: "Fuente: Physical Review Letters, 1959" },
+  { text: "Un muon creado a 15 km sobre la superficie terrestre debería desintegrarse antes de llegar al suelo — pero la dilatación del tiempo lo mantiene vivo lo suficiente para detectarlo.", source: "Fuente: Física de partículas, efectos relativistas" },
+  { text: "La relatividad especial de Einstein (1905) trataba de la velocidad. Su relatividad general (1915) trataba de la gravedad. Ambas deforman el tiempo — de maneras diferentes.", source: "Fuente: Einstein, Annalen der Physik" },
+  { text: "El potencial gravitacional varía en todo el universo — cada región del espacio cerca de un objeto masivo experimenta el tiempo a un ritmo ligeramente diferente, consecuencia directa de las ecuaciones de campo de Einstein.", source: "Fuente: Ecuaciones de campo de Einstein" },
+  { text: "El experimento Hafele–Keating (1971) llevó relojes atómicos alrededor del mundo en aviones y confirmó que la altitud y la velocidad dilatan el tiempo.", source: "Fuente: Hafele y Keating, Science 1972" },
+  { text: "Si pudieras pararte en el horizonte de eventos de un agujero negro, el tiempo afuera parecería avanzar infinitamente rápido.", source: "Fuente: Relatividad General" },
+  { text: "La gravedad del Sol es tan fuerte que ralentiza el tiempo en su superficie unos 6,700 segundos por siglo respecto a la Tierra — una demostración dramática de cómo la masa deforma el tiempo.", source: "Fuente: Cálculos de relatividad solar" },
+  { text: "Gemelos idénticos: uno se queda en la Tierra, otro viaja cerca de un agujero negro por lo que siente como 5 años — el viajero regresa 50 años más joven. Esto es física real.", source: "Fuente: La paradoja de los gemelos, relatividad" },
+  { text: "La dilatación del tiempo no es un error de redondeo — es una característica fundamental del universo, confirmada por cada experimento de precisión jamás realizado. No se puede apagar ni explicar de otra forma.", source: "Fuente: Consenso de la física moderna" },
+  { text: "Tu brecha personal de dilatación en esta app se calcula con la misma fórmula usada para calibrar los sistemas de navegación satelital de todo el mundo.", source: "Fuente: Cálculos del sistema GPS" },
+  { text: "Los relojes atómicos de cesio en los satélites GPS tienen precisión de 1 nanosegundo por día. Aun así requieren corrección relativista.", source: "Fuente: Estándares de tiempo GPS" },
+  { text: "Einstein dijo: 'La distinción entre pasado, presente y futuro es solo una ilusión persistentemente obstinada.' La relatividad le da la razón.", source: "Fuente: Cartas de Albert Einstein" },
+  { text: "En el centro de la Tierra, el potencial gravitacional está en su punto más bajo — así que el tiempo corre un poco más lento ahí que en la superficie, aunque estarías ingrávido.", source: "Fuente: Física del potencial gravitacional" },
+  { text: "La luz siempre viaja a c en un marco local — pero la gravedad curva su trayectoria y estira su longitud de onda. El corrimiento al rojo gravitacional le pasa a la luz al salir de un pozo de gravedad. Todo en el universo responde al espacio-tiempo curvado.", source: "Fuente: Relatividad General" },
+  { text: "Si vivieras en la superficie de una estrella de neutrones, el tiempo pasaría un 20% más lento que para alguien flotando lejos en el espacio — uno de los ejemplos más extremos de dilatación gravitacional en el universo observable.", source: "Fuente: Astrofísica de estrellas de neutrones" },
+  { text: "El telescopio GRAVITY confirmó el corrimiento al rojo gravitacional (dilatación del tiempo cerca de la masa) junto al agujero negro supermasivo del centro de nuestra galaxia.", source: "Fuente: Colaboración GRAVITY, ESO" },
+  { text: "La diferencia de tiempo entre tu cabeza y tus pies durante toda una vida es real — pero demasiado pequeña para sentirla. Solo los relojes atómicos pueden medirla.", source: "Fuente: Metrología de relojes ópticos" },
+  { text: "El Very Long Baseline Array (VLBA), una red de radiotelescopios que abarca 8,611 km a través de EE.UU., debe considerar la dilatación relativista del tiempo entre sus antenas para producir imágenes coherentes.", source: "Fuente: NRAO / VLBA" },
+  { text: "En 2022, relojes atómicos ópticos confirmaron la dilatación gravitacional del tiempo a través de solo 1 milímetro de altura — la medición más fina de la historia.", source: "Fuente: JILA / Nature, 2022" },
+  { text: "El universo tiene unos 13.8 mil millones de años — pero cerca de un objeto suficientemente masivo, esos mismos 13.8 mil millones de años podrían sentirse como mucho menos.", source: "Fuente: Cosmología relativista" },
+  { text: "Las ondas gravitacionales — ondulaciones del espacio-tiempo detectadas por LIGO — viajan a la velocidad de la luz y distorsionan brevemente el tiempo al pasar por la Tierra.", source: "Fuente: Colaboración Científica LIGO" },
+    { text: "Einstein desarrolló la Relatividad General trabajando solo, sin experimentos de laboratorio, usando matemáticas puras y experimentos mentales. Fue confirmada décadas después.", source: "Fuente: Historia de la física, 1915" },
+  { text: "La órbita de Mercurio se desvía de un modo que la gravedad de Newton no podía explicar. La relatividad de Einstein predijo la desviación exactamente — su primera gran confirmación.", source: "Fuente: Precesión del perihelio de Mercurio" },
+  { text: "En 1919, una expedición durante un eclipse solar comprobó que el Sol curva la luz de las estrellas, justo como Einstein predijo. Se hizo mundialmente famoso de la noche a la mañana.", source: "Fuente: Expedición de Eddington, 1919" },
+  { text: "El núcleo de la Tierra es unos 2.5 años más joven que su superficie — miles de millones de años de dilatación gravitacional del tiempo, en las profundidades.", source: "Fuente: Geofísica + cálculos de Relatividad General" },
+  { text: "En 1925, los astrónomos midieron el corrimiento al rojo gravitacional en la luz de la enana blanca Sirio B — luz perdiendo energía al salir de una gravedad intensa.", source: "Fuente: W.S. Adams, Observatorio Mt. Wilson" },
+  { text: "En 2020, científicos llevaron un reloj óptico a la cima del Tokyo Skytree y midieron el tiempo corriendo más rápido a 450 metros de altura — por primera vez fuera de un laboratorio.", source: "Fuente: Universidad de Tokio / RIKEN, 2020" },
+  { text: "Dos satélites Galileo lanzados por accidente en órbitas ovaladas se volvieron un experimento de física: confirmaron la dilatación gravitacional del tiempo al 0.003%.", source: "Fuente: Satélites excéntricos Galileo, ESA 2018" },
+  { text: "Gravity Probe B usó giroscopios ultraprecisos en órbita para confirmar que la Tierra al girar literalmente arrastra el espacio-tiempo consigo.", source: "Fuente: NASA / Stanford, Gravity Probe B" },
+  { text: "La primera imagen de un agujero negro (2019) mostró una sombra cuyo tamaño coincidía con las ecuaciones de Einstein — escritas 104 años antes.", source: "Fuente: Telescopio del Horizonte de Eventos" },
+  { text: "La gravedad puede actuar como lente: galaxias masivas curvan la luz de objetos detrás de ellas, a veces formando perfectos 'anillos de Einstein.'", source: "Fuente: Observaciones de lentes gravitacionales" },
+  { text: "Las señales de radar que rozan el Sol llegan medianamente tarde — el retraso de Shapiro — porque viajan por espacio curvado donde el tiempo corre más lento.", source: "Fuente: Irwin Shapiro, 1964" },
+  { text: "Dos estrellas de neutrones orbitándose pierden energía exactamente como Einstein predijo por ondas gravitacionales — un descubrimiento que ganó el Nobel de 1993.", source: "Fuente: Púlsar binario Hulse–Taylor" },
+  { text: "En los aceleradores de partículas, los muones que viajan cerca de la velocidad de la luz viven hasta 29 veces más que los muones en reposo. La velocidad literalmente estira su vida.", source: "Fuente: Experimentos de muones en el CERN" },
+  { text: "El tiempo en Marte corre un poco más rápido que en la Tierra — con menos gravedad, los colonos marcianos envejecerían unos microsegundos extra cada día.", source: "Fuente: Cálculos de potencial gravitacional comparado" },
+  { text: "Los astronautas del Apolo experimentaron ambos efectos a la vez: la velocidad frenó sus relojes, la altitud los aceleró. La diferencia neta fue real y calculable.", source: "Fuente: Análisis relativistas de las misiones Apolo" },
+  { text: "Los mejores relojes ópticos de hoy perderían menos de un segundo en 15 mil millones de años — más que la edad del universo.", source: "Fuente: Relojes ópticos NIST / JILA" },
+  { text: "Los relojes se están volviendo medidores de altitud: la 'nivelación cronométrica' mide diferencias de altura comparando qué tan rápido fluye el tiempo en cada lugar.", source: "Fuente: Geodesia relativista" },
+  { text: "Redes de púlsares a través de la galaxia funcionan como un arreglo de relojes cósmicos — los astrónomos comparan sus pulsos para detectar ondulaciones del espacio-tiempo de años luz de ancho.", source: "Fuente: Arreglos de púlsares / NANOGrav" },
+  { text: "Hasta la rotación de la Tierra importa: relojes volados hacia el este pierden tiempo respecto a relojes volados hacia el oeste, porque el giro terrestre suma y resta velocidad.", source: "Fuente: Hafele–Keating, efecto Sagnac" },
+  { text: "Sin las correcciones relativistas, el GPS de tu teléfono se desviaría unos 10 kilómetros por día. Usas las ecuaciones de Einstein cada vez que navegas.", source: "Fuente: Ingeniería del sistema GPS" },
+  { text: "La dilatación del tiempo no tiene tamaño mínimo: cada escalón que subes, cada viaje en elevador, cada caminata en la montaña cambia qué tan rápido envejeces. La física nunca duerme.", source: "Fuente: Relatividad General, aplicada a la vida diaria" }
+];
+
+window.FUN_FACTS_ES = [
+  () => `La luz recorre ${((dilationGapNs/NS_PER_S)*C*1000).toFixed(2)} mm en tu brecha`,
+  () => `Tu brecha es de ${((calcDilationRate()*3600)).toFixed(6)} ns por hora`,
+  () => `Los satélites GPS se desvían 38,400 ns/día — la tuya es diminuta pero real`,
+  () => `Einstein lo predijo en 1915. Comprobado en 2010 a 33 cm.`,
+  () => `En el Everest, acumularías ${((G*EVEREST_M/(C*C))*NS_PER_S*86400).toFixed(2)} ns/día`,
+  () => `Tu brecha sigue creciendo cada segundo que respiras`,
+  () => `El tiempo mismo se está curvando alrededor de tu cuerpo ahora mismo`,
+];
+
+// Static text dictionary: English → Spanish (exact text-node matches)
+const TXT_ES = {
+  "The Science of Living": "La Ciencia de Vivir",
+  "● SCREEN LOCK INACTIVE": "● PANTALLA SIN MANTENER ACTIVA",
+  "● SCREEN STAY-AWAKE ACTIVE": "● PANTALLA SIEMPRE ACTIVA",
+  "Your Height": "Tu Estatura",
+  "Your Age": "Tu Edad",
+  "Altitude": "Altitud",
+  "▲ HEAD": "▲ CABEZA",
+  "▼ FEET": "▼ PIES",
+  "Head Ahead of Feet By": "Tu Cabeza Adelante de Tus Pies Por",
+  "Your Head Ahead of Your Feet": "Tu Cabeza Adelante de Tus Pies",
+  "nanoseconds since app opened": "nanosegundos desde que abriste la app",
+  "↑ Enter your height above to personalize your dilation rate": "↑ Ingresa tu estatura arriba para personalizar tu tasa de dilatación",
+  "Today's Total Gap": "Brecha Total de Hoy",
+  "resets at midnight": "se reinicia a medianoche",
+  "Your Lifetime Gap": "Tu Brecha de Vida",
+  "Your Lifetime Dilation Gap": "Tu Brecha de Dilatación de Vida",
+  "How much older your head is than your feet": "Cuánto más vieja es tu cabeza que tus pies",
+  "Landmark Comparisons": "Comparaciones Famosas",
+  "What Your Gap Compares To": "Con Qué Se Compara Tu Brecha",
+  "GPS Satellite Correction": "Corrección de Satélites GPS",
+  "Satellites must correct for time dilation daily": "Los satélites corrigen la dilatación del tiempo a diario",
+  "Speed of Light Travel": "Viaje a la Velocidad de la Luz",
+  "Distance light covers in your session gap": "Distancia que recorre la luz en tu brecha de sesión",
+  "vs. Mt. Everest Summit": "vs. la Cima del Everest",
+  "Rate at 29,032 ft elevation (8,849 m)": "Tasa a 29,032 pies de elevación (8,849 m)",
+  "Human Lifespan (80 yrs)": "Vida Humana (80 años)",
+  "Total head-feet gap over a full life": "Brecha total cabeza-pies en toda una vida",
+  "🔥 Daily Streak": "🔥 Racha Diaria",
+  "⚛ Today's Relativity Fact": "⚛ Dato de Relatividad de Hoy",
+  "Time Dilation Simulator": "Simulador de Dilatación del Tiempo",
+  "Drag the slider to explore how dramatically time dilates at different locations. Watch the clocks separate in real time.": "Desliza para explorar cuán dramáticamente se dilata el tiempo en diferentes lugares. Mira los relojes separarse en tiempo real.",
+  "TIME DIFFERENCE PER DAY": "DIFERENCIA DE TIEMPO POR DÍA",
+  "Select a location above": "Selecciona un lugar arriba",
+  "EARTH": "TIERRA",
+  "Earth": "Tierra",
+  "Everest": "Everest",
+  "Plane": "Avión",
+  "Moon": "Luna",
+  "Mars": "Marte",
+  "Black Hole": "Agujero Negro",
+  "Achievements": "Logros",
+  "COLLECTED": "OBTENIDOS",
+  "Freeze Time": "Congela el Tiempo",
+  "A nanosecond counter blasts upward.": "Un contador de nanosegundos sube a toda velocidad.",
+  "Tap FREEZE exactly on the target.": "Toca CONGELAR justo en el objetivo.",
+  "How precise can you be?": "¿Qué tan preciso puedes ser?",
+  "▶ START": "▶ INICIAR",
+  "Best:": "Mejor:",
+  "TARGET": "OBJETIVO",
+  "nanoseconds": "nanosegundos",
+  "⚡ FREEZE": "⚡ CONGELAR",
+  "ROUND": "RONDA",
+  "SCORE": "PUNTOS",
+  "STREAK": "RACHA",
+  "YOU FROZE AT": "CONGELASTE EN",
+  "▶ NEXT ROUND": "▶ SIGUIENTE RONDA",
+  "🧬 Your Time Creature": "🧬 Tu Criatura del Tiempo",
+  "Age:": "Edad:",
+  "days": "días",
+  "Next evolution": "Próxima evolución",
+  "STAGE": "ETAPA",
+  "VISITS": "VISITAS",
+  "🌙 Night Mode": "🌙 Modo Noche",
+  "TAP ANYWHERE TO EXIT NIGHT MODE": "TOCA EN CUALQUIER LUGAR PARA SALIR",
+  "↺ Reset Gap": "↺ Reiniciar Brecha",
+  "↗ Share": "↗ Compartir",
+  "Einstein's Explanation": "La Explicación de Einstein",
+  "Current Time": "Hora Actual",
+  "Dilation Rate": "Tasa de Dilatación",
+  "Your Altitude": "Tu Altitud",
+  "Height Diff": "Dif. de Estatura",
+  "nanoseconds — my head is older than my feet": "nanosegundos — mi cabeza es más vieja que mis pies",
+  "Open the app to generate your personal dilation data.": "Abre la app para generar tus datos personales de dilatación.",
+  "🎯 within 0.01 ns = 1000 pts": "🎯 a 0.01 ns = 1000 pts",
+  "⚡ within 0.1 ns = 500 pts": "⚡ a 0.1 ns = 500 pts",
+  "👍 within 0.5 ns = 200 pts": "👍 a 0.5 ns = 200 pts",
+  "CLOCK FACE": "ESFERA",
+  "Premium Clock Faces": "Esferas Premium",
+  "Rose gold, midnight blue, and emerald watch faces": "Esferas en oro rosa, azul medianoche y esmeralda",
+  "📸 Share Image": "📸 Compartir Imagen",
+  "📋 Copy Text": "📋 Copiar Texto",
+  "Close": "Cerrar",
+  "Get it on Google Play · Einstein Clock": "Consíguelo en Google Play · Einstein Clock",
+  "ONE-TIME PURCHASE · YOURS FOREVER": "PAGO ÚNICO · TUYO PARA SIEMPRE",
+  "See how much older your head already is than your feet across your entire life": "Mira cuánto más vieja ya es tu cabeza que tus pies a lo largo de toda tu vida",
+  "GPS Altitude Detection": "Detección de Altitud por GPS",
+  "Auto-detect your elevation for a perfectly accurate dilation rate": "Detecta tu elevación automáticamente para una tasa de dilatación exacta",
+  "Your gap vs. GPS satellites, Mt. Everest, the speed of light, and 80 years of life": "Tu brecha vs. satélites GPS, el Everest, la velocidad de la luz y 80 años de vida",
+  "Share Your Gap": "Comparte Tu Brecha",
+  "Generate a personal dilation card and share your exact numbers": "Genera una tarjeta personal de dilatación y comparte tus números exactos",
+  "One-time · No subscription · No ads": "Pago único · Sin suscripción · Sin anuncios",
+  "Unlock Einstein Clock Pro": "Desbloquear Einstein Clock Pro",
+  "Restore previous purchase": "Restaurar compra anterior",
+  "Payment processed securely by Google Play.": "Pago procesado de forma segura por Google Play.",
+  "Purchase is linked to your Google account —": "La compra está vinculada a tu cuenta de Google —",
+  "restore anytime, on any device.": "restáurala cuando quieras, en cualquier dispositivo.",
+  "Unlock for $1.99": "Desbloquear por $1.99"
+};
+const TXT_EN = {};
+Object.keys(TXT_ES).forEach(k => { TXT_EN[TXT_ES[k]] = k; });
+
+const PLACEHOLDERS = {
+  'input-height':  { en: 'e.g. 5.9',     es: 'ej. 5.9' },
+  'input-age':     { en: 'Pro feature',  es: 'Función Pro' },
+  'input-altitude':{ en: 'Pro feature',  es: 'Función Pro' }
+};
+
+const EINSTEIN_ES = [
+  { h: "¿Por Qué Sucede Esto?", p: "En 1915, Albert Einstein publicó su <strong>Teoría General de la Relatividad</strong>, que reveló algo extraordinario: <strong>el tiempo no fluye al mismo ritmo en todas partes.</strong> La gravedad deforma el tejido mismo del espacio-tiempo — y cuanto más fuerte la atracción de la gravedad, más lento pasa el tiempo." },
+  { h: "Más Cerca de la Tierra = Tiempo Más Lento", p: "Tus pies están ligeramente más cerca del centro de masa de la Tierra que tu cabeza. Esto significa que la gravedad jala tus pies un poquito más fuerte. Como resultado, <strong>tus pies experimentan el tiempo pasando fraccionalmente más lento</strong> que tu cabeza — cada segundo de cada día." },
+  { h: "Las Matemáticas", p: "Donde <strong>g</strong> es la aceleración gravitacional (9.8 m/s²), <strong>h</strong> es la diferencia de altura, <strong>c</strong> es la velocidad de la luz y <strong>t</strong> es el tiempo transcurrido. La diferencia es diminuta — pero es <strong>absolutamente real</strong> y ha sido confirmada por relojes atómicos." },
+  { h: "Comprobado por Experimento", p: "En 2010, físicos del NIST usaron relojes atómicos ópticos tan precisos que confirmaron este efecto <strong>a través de solo 33 centímetros</strong> de diferencia de altura. Esta app te muestra tu pedacito personal de ese experimento, sucediendo ahora mismo." },
+  { h: "La Altitud También Importa", p: "Cuanto más alto estés sobre el nivel del mar, más débil es la atracción gravitacional de la Tierra — así que el tiempo en realidad avanza <strong>más rápido</strong> en altitud. Los satélites GPS deben corregir constantemente sus relojes <strong>38 microsegundos por día</strong> o la navegación se desviaría millas de su curso." }
+];
+let EINSTEIN_EN = null;
+
+function swapTextNodes(dict) {
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) {
+    const trimmed = node.nodeValue.trim();
+    if (trimmed && dict[trimmed]) {
+      node.nodeValue = node.nodeValue.replace(trimmed, dict[trimmed]);
+    }
+  }
+}
+
+function applyEinsteinSections(lang) {
+  const sections = document.querySelectorAll('.einstein-section');
+  if (!sections.length) return;
+  if (!EINSTEIN_EN) {
+    EINSTEIN_EN = Array.from(sections).map(s => ({
+      h: s.querySelector('h3') ? s.querySelector('h3').innerHTML : '',
+      p: s.querySelector('p') ? s.querySelector('p').innerHTML : ''
+    }));
+  }
+  const src = lang === 'es' ? EINSTEIN_ES : EINSTEIN_EN;
+  sections.forEach((s, i) => {
+    if (!src[i]) return;
+    const h3 = s.querySelector('h3'), p = s.querySelector('p');
+    if (h3) h3.innerHTML = src[i].h;
+    if (p) p.innerHTML = src[i].p;
+  });
+}
+
+function setLanguage(lang) {
+  localStorage.setItem('ec_lang', lang);
+  document.documentElement.lang = lang === 'es' ? 'es' : 'en';
+  swapTextNodes(lang === 'es' ? TXT_ES : TXT_EN);
+  applyEinsteinSections(lang);
+  // Placeholders (only when inputs are in their free-tier state)
+  Object.keys(PLACEHOLDERS).forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const pair = PLACEHOLDERS[id];
+    if (el.placeholder === pair.en || el.placeholder === pair.es) el.placeholder = pair[lang] || pair.en;
+    if (isPro) {
+      if (id === 'input-age' && (el.placeholder === 'e.g. 35' || el.placeholder === 'ej. 35')) el.placeholder = lang==='es' ? 'ej. 35' : 'e.g. 35';
+      if (id === 'input-altitude' && (el.placeholder === 'e.g. 46' || el.placeholder === 'ej. 46')) el.placeholder = lang==='es' ? 'ej. 46' : 'e.g. 46';
+    }
+  });
+  // Re-render dynamic content in the new language
+  try { renderDailyFact(); } catch(e) {}
+  try { renderAchievements(); } catch(e) {}
+  try { refreshProPrice(); } catch(e) {}
+  try { renderQuiz(); } catch(e) {}
+  // Toggle button shows the language you would switch TO
+  const btn = document.getElementById('lang-toggle');
+  if (btn) btn.textContent = lang === 'es' ? '🌐 EN' : '🌐 ES';
+}
+
+document.getElementById('lang-toggle').addEventListener('click', () => {
+  setLanguage(CUR_LANG() === 'es' ? 'en' : 'es');
+});
+
+// Initial application — Spanish device language or saved preference
+if (CUR_LANG() === 'es') { setLanguage('es'); }
+</script>
+
+</body>
+</html>

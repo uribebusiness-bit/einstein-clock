@@ -921,12 +921,16 @@ function applyProState() {
 }
 
 // ── SETTINGS PERSISTENCE ───────────────────────────────────────────
+let _savedFlashTimer = null;
 function saveSettings() {
   localStorage.setItem('ec_height', userHeightFt);
   if (isPro) {
     localStorage.setItem('ec_age', userAgeYears);
     localStorage.setItem('ec_alt', userAltitudeFt);
   }
+  // Brief confirmation so users know their entry was saved
+  clearTimeout(_savedFlashTimer);
+  _savedFlashTimer = setTimeout(() => showToast(TT('✓ Saved', '✓ Guardado')), 600);
 }
 
 function loadSettings() {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'etdt-v9';
+const CACHE_NAME = 'etdt-v10';
 const ASSETS = [
   './', './app.html', './offline.html', './manifest.json',
   './icons/icon-192.png', './icons/icon-192-maskable.png',

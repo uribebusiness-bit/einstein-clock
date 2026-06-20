@@ -395,6 +395,21 @@
 .posture-preset { flex: 1; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; color: var(--text-dim); font-family: var(--font-ui); font-size: 11px; padding: 8px 4px; cursor: pointer; transition: all 0.2s; }
 .posture-preset:hover { border-color: var(--gold-dim); color: var(--text); }
 .posture-preset.active { border-color: var(--gold); color: var(--gold); background: rgba(201,168,76,0.08); }
+
+/* ── RELATIVITY RANK ── */
+#rank-block { margin: 10px 16px 0; background: linear-gradient(135deg, rgba(201,168,76,0.07), rgba(74,158,255,0.04)); border: 1px solid var(--gold-dim); border-radius: 12px; padding: 16px; }
+#rank-title { font-family: var(--font-mono); font-size: 9px; letter-spacing: 3px; color: var(--gold); text-transform: uppercase; margin-bottom: 12px; }
+#rank-badge-wrap { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+#rank-badge-icon { font-size: 38px; line-height: 1; }
+#rank-badge-text { flex: 1; }
+#rank-headline { font-family: var(--font-disp); font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.35; font-style: italic; }
+#rank-sub { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--text-dim); margin-top: 4px; text-transform: uppercase; }
+#rank-journey { border-top: 1px solid var(--border); padding-top: 12px; }
+#rank-journey-label { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); margin-bottom: 5px; letter-spacing: 1px; }
+#rank-journey-to { color: var(--gold-dim); }
+#rank-journey-bar { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+#rank-journey-fill { height: 100%; background: linear-gradient(to right, var(--blue), var(--gold)); border-radius: 3px; transition: width 1s ease; }
+#rank-journey-note { font-family: var(--font-ui); font-size: 11px; color: var(--text-dim); margin-top: 8px; line-height: 1.5; font-style: italic; }
   </style>
 </head>
 <body>
@@ -532,9 +547,30 @@
       <button class="posture-preset" data-p="100">🧍 Standing</button>
       <button class="posture-preset" data-p="55">🪑 Sitting</button>
       <button class="posture-preset" data-p="0">🛌 Lying flat</button>
-    </div>
+</div>
   </div>
 </div>
+
+<!-- RELATIVITY RANK (milestone overlay — FREE) -->
+<div id="rank-block">
+  <div id="rank-title">⚛ Your Rank in Relativity History</div>
+  <div id="rank-badge-wrap">
+    <div id="rank-badge-icon">🥇</div>
+    <div id="rank-badge-text">
+      <div id="rank-headline">Calibrating…</div>
+      <div id="rank-sub">Your body vs. the great experiments</div>
+    </div>
+  </div>
+  <div id="rank-journey">
+    <div id="rank-journey-label">
+      <span id="rank-journey-from">—</span>
+      <span id="rank-journey-to">Next: —</span>
+    </div>
+    <div id="rank-journey-bar"><div id="rank-journey-fill" style="width:0%"></div></div>
+    <div id="rank-journey-note">—</div>
+  </div>
+</div>
+
   <!-- LANDMARK COMPARISONS — PRO GATED -->
   <div id="landmark-block" class="pro-gate">
     <div class="pro-gate-overlay" id="landmark-gate" onclick="openProModal()">
@@ -1018,10 +1054,77 @@ function checkMilestones() {
     setTimeout(() => document.getElementById('gap-block').classList.remove('milestone-flash'), 1000);
     nextMilestone++;
     // One-time gentle Pro discovery hint at the first milestone (never repeats)
-    if (!isPro && !localStorage.getItem('ec_pro_hint_shown')) {
+if (!isPro && !localStorage.getItem('ec_pro_hint_shown')) {
       localStorage.setItem('ec_pro_hint_shown', 'true');
       setTimeout(() => showToast(TT('★ Pro shows your LIFETIME gap — since the day you were born','★ Pro muestra tu brecha DE VIDA — desde el día que naciste')), 1600);
     }
+  }
+}
+
+// ── RELATIVITY RANK (free, patent-anchored milestone overlay) ──────
+// Real experiments ranked by fractional rate gh/c² (dimensionless).
+// hM = height span each experiment resolved time dilation across.
+const RANK_EXPERIMENTS = [
+  { name: 'the 2022 JILA millimeter clock', short: 'JILA 2022', hM: 0.001, year: 2022 },
+  { name: 'the 2010 NIST one-foot experiment', short: 'NIST 2010', hM: 0.33, year: 2010 },
+  { name: 'the 1959 Pound–Rebka Harvard tower', short: 'Pound–Rebka 1959', hM: 22.5, year: 1959 },
+  { name: 'the 2020 Tokyo Skytree clock', short: 'Tokyo Skytree 2020', hM: 450, year: 2020 },
+];
+function fracRateForHeightM(hM) { return (G * hM) / (C * C); } // dimensionless s/s
+let rankNextToastIdx = -1; // tracks last journey threshold we celebrated
+
+function updateRank() {
+  const headlineEl = document.getElementById('rank-headline');
+  if (!headlineEl) return;
+  // User's CURRENT fractional rate (responds live to posture + height).
+  const userFrac = calcDilationRate() / NS_PER_S; // calcDilationRate is ns/s; divide to get s/s
+  // How many experiments does the user's body rate exceed?
+  let passed = 0, nextExp = null;
+  for (const e of RANK_EXPERIMENTS) {
+    if (userFrac >= fracRateForHeightM(e.hM)) passed++;
+    else { nextExp = e; break; }
+  }
+  const icons = ['🌑','🥉','🥈','🥇','👑'];
+  document.getElementById('rank-badge-icon').textContent = icons[Math.min(passed, icons.length - 1)];
+  // Headline: name the highest experiment the user's body out-warps.
+  if (passed === 0) {
+    headlineEl.textContent = TT(
+      'Stand up to begin — lying flat, your head and feet share the same time.',
+      'Ponte de pie para empezar — acostado, tu cabeza y tus pies comparten el mismo tiempo.');
+  } else {
+    const topPassed = RANK_EXPERIMENTS[passed - 1];
+    headlineEl.textContent = TT(
+      'Your body out-warps ' + topPassed.name + '.',
+      'Tu cuerpo supera ' + topPassed.name + '.');
+  }
+  // Journey bar: climb the user's ACCUMULATED gap toward "one day of the
+  // next experiment's gap" — a real, multi-day target.
+  const fromEl = document.getElementById('rank-journey-from');
+  const toEl = document.getElementById('rank-journey-to');
+  const fillEl = document.getElementById('rank-journey-fill');
+  const noteEl = document.getElementById('rank-journey-note');
+  if (!nextExp) {
+    fromEl.textContent = TT('TOP RANK','RANGO MÁXIMO');
+    toEl.textContent = TT('All experiments passed','Todos superados');
+    fillEl.style.width = '100%';
+    noteEl.textContent = TT(
+      'Your standing body resolves more time dilation than every landmark experiment here. Remarkable.',
+      'Tu cuerpo de pie resuelve más dilatación que cada experimento aquí. Extraordinario.');
+    return;
+  }
+  // Target: the gap the next experiment's setup opens in ONE DAY (in ns).
+  const targetNs = fracRateForHeightM(nextExp.hM) * NS_PER_S * 86400;
+  const pct = Math.max(0, Math.min(100, (dilationGapNs / targetNs) * 100));
+  fromEl.textContent = TT('YOUR GAP','TU BRECHA');
+  toEl.textContent = TT('Next: ','Sig.: ') + nextExp.short;
+  fillEl.style.width = pct.toFixed(1) + '%';
+  noteEl.textContent = TT(
+    'Climbing toward one day of ' + nextExp.short + "'s gap — " + pct.toFixed(0) + '% there.',
+    'Avanzando hacia un día de la brecha de ' + nextExp.short + ' — ' + pct.toFixed(0) + '% logrado.');
+  // One-time celebration when a journey threshold is crossed.
+  if (pct >= 100 && rankNextToastIdx !== passed) {
+    rankNextToastIdx = passed;
+    showToast(TT('⚛ You passed ' + nextExp.short + '!','⚛ ¡Superaste ' + nextExp.short + '!'));
   }
 }
 
@@ -1143,8 +1246,8 @@ function tick(ts) {
     }
   }
 
-  // Milestone check every 60 frames
-  if (frameCount%60===0) checkMilestones();
+// Milestone + rank check every 60 frames
+  if (frameCount%60===0) { checkMilestones(); updateRank(); }
 
   requestAnimationFrame(tick);
 }
@@ -2327,6 +2430,7 @@ loadAchievements();
 renderAchievements();
 renderDailyFact();
 updateSimDisplay();
+updateRank();
 const currentStreak = updateStreak();
 checkAchievements(currentStreak);
 

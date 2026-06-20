@@ -381,6 +381,20 @@
     body.night-mode #gap-block { opacity: 0.8; }
     #night-exit-hint { display: none; }
     body.night-mode #night-exit-hint { display: block; position: fixed; bottom: 18px; left: 0; right: 0; text-align: center; font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: rgba(232,232,240,0.25); }
+    #posture-block { margin: 10px 16px 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+#posture-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 3px; color: var(--gold); text-transform: uppercase; margin-bottom: 6px; }
+#posture-sub { font-family: var(--font-ui); font-size: 11px; color: var(--text-dim); line-height: 1.5; margin-bottom: 14px; }
+#posture-readout { text-align: center; font-family: var(--font-mono); margin-bottom: 12px; }
+#posture-rate { font-size: 26px; color: var(--gold); }
+.posture-unit { font-size: 11px; color: var(--text-dim); letter-spacing: 2px; }
+#posture-slider { width: 100%; -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--border), var(--gold)); outline: none; margin-bottom: 8px; }
+#posture-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--gold); cursor: pointer; border: 2px solid #0a0a0f; }
+#posture-slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--gold); cursor: pointer; border: 2px solid #0a0a0f; }
+#posture-state-label { font-family: var(--font-ui); font-size: 12px; color: var(--text); text-align: center; margin-bottom: 12px; }
+#posture-presets { display: flex; gap: 8px; }
+.posture-preset { flex: 1; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; color: var(--text-dim); font-family: var(--font-ui); font-size: 11px; padding: 8px 4px; cursor: pointer; transition: all 0.2s; }
+.posture-preset:hover { border-color: var(--gold-dim); color: var(--text); }
+.posture-preset.active { border-color: var(--gold); color: var(--gold); background: rgba(201,168,76,0.08); }
   </style>
 </head>
 <body>
@@ -500,7 +514,27 @@
       <div id="lifetime-sub">How much older your head is than your feet</div>
     </div>
   </div>
-
+<!-- POSTURE MODIFIER — PRO GATED -->
+<div id="posture-block" class="pro-gate">
+  <div class="pro-gate-overlay" id="posture-gate" onclick="openProModal()">
+    <div class="pro-gate-icon">🧍</div>
+    <div class="pro-gate-text">Posture Calibration</div>
+    <div class="pro-gate-price">EINSTEIN CLOCK PRO</div>
+    <button class="pro-gate-btn">Unlock</button>
+  </div>
+  <div class="pro-blurred">
+    <div id="posture-label">Posture Calibration</div>
+    <div id="posture-sub">Your gap depends on how high your head sits above your feet. Change your posture and watch the physics respond.</div>
+    <div id="posture-readout"><span id="posture-rate">—</span> <span class="posture-unit">ns/hr</span></div>
+    <input type="range" id="posture-slider" min="0" max="100" value="100" step="1" />
+    <div id="posture-state-label">🧍 Standing — full height</div>
+    <div id="posture-presets">
+      <button class="posture-preset" data-p="100">🧍 Standing</button>
+      <button class="posture-preset" data-p="55">🪑 Sitting</button>
+      <button class="posture-preset" data-p="0">🛌 Lying flat</button>
+    </div>
+  </div>
+</div>
   <!-- LANDMARK COMPARISONS — PRO GATED -->
   <div id="landmark-block" class="pro-gate">
     <div class="pro-gate-overlay" id="landmark-gate" onclick="openProModal()">
@@ -906,7 +940,7 @@ function applyProState() {
   document.getElementById('alt-lock').style.display = 'none';
   const gpsBtn = document.getElementById('gps-btn');
   gpsBtn.disabled = false;
-  ['lifetime-gate','landmark-gate'].forEach(id => {
+  ['lifetime-gate','landmark-gate','posture-gate'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.remove();
   });
@@ -994,6 +1028,7 @@ function checkMilestones() {
 // ── STATE ──────────────────────────────────────────────────────────
 let dilationGapNs = 0, lastTimestamp = null;
 let userAgeYears = 0, userHeightFt = 5.8, userAltitudeFt = 46;
+  let postureFactor = 1.0; // 1.0 = standing (full height), 0 = lying flat
 let wakeLock = null;
 
 // ── DOM ────────────────────────────────────────────────────────────
@@ -1022,7 +1057,7 @@ drawMarks('head-marks','#c9a84c'); drawMarks('feet-marks','#b8c0cc');
 
 // ── PHYSICS ────────────────────────────────────────────────────────
 function calcDilationRate() {
-  const hDiffM = userHeightFt * FT_TO_M;
+  const hDiffM = userHeightFt * FT_TO_M * postureFactor;
   const altM = userAltitudeFt * FT_TO_M;
   return (G * hDiffM * (1 - 2*altM/EARTH_R) / (C*C)) * NS_PER_S;
 }
@@ -1200,6 +1235,38 @@ document.getElementById('input-height').addEventListener('input', e => {
     document.getElementById('gap-label').textContent = 'Your Head Ahead of Your Feet';
   }
 });
+  (function initPosture(){
+  const slider = document.getElementById('posture-slider');
+  const rateEl = document.getElementById('posture-rate');
+  const stateEl = document.getElementById('posture-state-label');
+  const presets = document.querySelectorAll('.posture-preset');
+  if (!slider) return;
+
+  function describe(p){
+    if (p >= 90) return '🧍 Standing — full height';
+    if (p >= 35) return '🪑 Reclined / sitting';
+    if (p >  5)  return '↘ Partly reclined';
+    return '🛌 Lying flat — head level with feet';
+  }
+  function refreshPostureReadout(){
+    rateEl.textContent = (calcDilationRate()*3600).toFixed(6);
+  }
+  function setPosture(p, fromSlider){
+    postureFactor = p/100;
+    if (!fromSlider) slider.value = p;
+    stateEl.textContent = describe(p);
+    presets.forEach(b => b.classList.toggle('active', parseInt(b.dataset.p)===p));
+    localStorage.setItem('ec_posture', postureFactor);
+    refreshPostureReadout();
+  }
+
+  slider.addEventListener('input', e => setPosture(parseInt(e.target.value), true));
+  presets.forEach(b => b.addEventListener('click', () => setPosture(parseInt(b.dataset.p), false)));
+
+  const saved = parseFloat(localStorage.getItem('ec_posture'));
+  if (isPro && !isNaN(saved)) setPosture(Math.round(saved*100), false);
+  else setPosture(100, false);
+})();
 document.getElementById('einstein-toggle').addEventListener('click', () => {
   const c=document.getElementById('einstein-content'), t=document.getElementById('einstein-toggle');
   c.classList.toggle('open'); t.classList.toggle('open', c.classList.contains('open'));

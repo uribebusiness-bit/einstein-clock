@@ -2267,12 +2267,13 @@ document.getElementById('ach-toggle').addEventListener('click', () => {
       pct = Math.min(100, Math.round((prog / range) * 100));
     }
 
-    document.getElementById('creature-days').textContent = days;
+    document.getElementById('creature-days').textContent = Math.max(days, streak);
     document.getElementById('creature-stage-label').textContent = stage.name;
     document.getElementById('creature-status').textContent = stage.desc;
     document.getElementById('creature-progress-fill').style.width = pct + '%';
     document.getElementById('creature-stage-name').textContent = 'Stage ' + (stageIdx+1);
-    document.getElementById('creature-next-label').textContent = nextStage ? nextStage.minDays + ' day streak to evolve' : 'MAX EVOLUTION';
+    const daysLeft = nextStage ? Math.max(1, nextStage.minDays - streak) : 0;
+    document.getElementById('creature-next-label').textContent = nextStage ? '→ ' + daysLeft + (daysLeft === 1 ? ' more day to evolve' : ' more days to evolve') : 'MAX EVOLUTION';
     document.getElementById('cs-streak').textContent = streak;
     document.getElementById('cs-stage').textContent = stageIdx + 1;
     document.getElementById('cs-visits').textContent = visits;

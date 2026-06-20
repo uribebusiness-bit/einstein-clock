@@ -1076,6 +1076,10 @@ let rankNextToastIdx = -1; // tracks last journey threshold we celebrated
 function updateRank() {
   const headlineEl = document.getElementById('rank-headline');
   if (!headlineEl) return;
+  const fromEl = document.getElementById('rank-journey-from');
+  const toEl = document.getElementById('rank-journey-to');
+  const fillEl = document.getElementById('rank-journey-fill');
+  const noteEl = document.getElementById('rank-journey-note');
   // User's CURRENT fractional rate (responds live to posture + height).
   const userFrac = calcDilationRate() / NS_PER_S; // calcDilationRate is ns/s; divide to get s/s
   // How many experiments does the user's body rate exceed?
@@ -1087,22 +1091,25 @@ function updateRank() {
   const icons = ['🌑','🥉','🥈','🥇','👑'];
   document.getElementById('rank-badge-icon').textContent = icons[Math.min(passed, icons.length - 1)];
   // Headline: name the highest experiment the user's body out-warps.
+
   if (passed === 0) {
     headlineEl.textContent = TT(
       'Stand up to begin — lying flat, your head and feet share the same time.',
       'Ponte de pie para empezar — acostado, tu cabeza y tus pies comparten el mismo tiempo.');
-  } else {
-    const topPassed = RANK_EXPERIMENTS[passed - 1];
-    headlineEl.textContent = TT(
-      'Your body out-warps ' + topPassed.name + '.',
-      'Tu cuerpo supera ' + topPassed.name + '.');
+    fromEl.textContent = TT('YOUR GAP','TU BRECHA');
+    toEl.textContent = TT('Next: stand up','Sig.: ponte de pie');
+    fillEl.style.width = '0%';
+    noteEl.textContent = TT(
+      'Lying flat, your rate is zero — stand up and your body starts out-warping history.',
+      'Acostado, tu tasa es cero — ponte de pie y tu cuerpo empieza a superar la historia.');
+    return;
   }
+const topPassed = RANK_EXPERIMENTS[passed - 1];
+  headlineEl.textContent = TT(
+    'Your body out-warps ' + topPassed.name + '.',
+    'Tu cuerpo supera ' + topPassed.name + '.');
   // Journey bar: climb the user's ACCUMULATED gap toward "one day of the
   // next experiment's gap" — a real, multi-day target.
-  const fromEl = document.getElementById('rank-journey-from');
-  const toEl = document.getElementById('rank-journey-to');
-  const fillEl = document.getElementById('rank-journey-fill');
-  const noteEl = document.getElementById('rank-journey-note');
   if (!nextExp) {
     fromEl.textContent = TT('TOP RANK','RANGO MÁXIMO');
     toEl.textContent = TT('All experiments passed','Todos superados');

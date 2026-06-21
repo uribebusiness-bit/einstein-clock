@@ -543,10 +543,10 @@
     <div id="posture-readout"><span id="posture-rate">—</span> <span class="posture-unit">ns/hr</span></div>
     <input type="range" id="posture-slider" min="0" max="100" value="100" step="1" />
     <div id="posture-state-label">🧍 Standing — full height</div>
-    <div id="posture-presets">
-      <button class="posture-preset" data-p="100">🧍 Standing</button>
-      <button class="posture-preset" data-p="55">🪑 Sitting</button>
+<div id="posture-presets">
       <button class="posture-preset" data-p="0">🛌 Lying flat</button>
+      <button class="posture-preset" data-p="55">🪑 Sitting</button>
+      <button class="posture-preset" data-p="100">🧍 Standing</button>
 </div>
   </div>
 </div>
@@ -1373,9 +1373,9 @@ document.getElementById('input-height').addEventListener('input', e => {
   slider.addEventListener('input', e => setPosture(parseInt(e.target.value), true));
   presets.forEach(b => b.addEventListener('click', () => setPosture(parseInt(b.dataset.p), false)));
 
-  const saved = parseFloat(localStorage.getItem('ec_posture'));
-  if (isPro && !isNaN(saved)) setPosture(Math.round(saved*100), false);
-  else setPosture(100, false);
+// Always start at Standing so users immediately see a live, climbing count
+  // (restoring a saved "lying flat" would freeze everything at 0.000000 and look broken)
+  setPosture(100, false);
 })();
 document.getElementById('einstein-toggle').addEventListener('click', () => {
   const c=document.getElementById('einstein-content'), t=document.getElementById('einstein-toggle');

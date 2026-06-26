@@ -411,10 +411,51 @@
 #rank-journey-bar { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
 #rank-journey-fill { height: 100%; background: linear-gradient(to right, var(--blue), var(--gold)); border-radius: 3px; transition: width 1s ease; }
 #rank-journey-note { font-family: var(--font-ui); font-size: 11px; color: var(--text-dim); margin-top: 8px; line-height: 1.5; font-style: italic; }
+  /* ── FIRST-RUN WONDER OVERLAY ── */
+#wonder-overlay { position: fixed; inset: 0; z-index: 400; background: radial-gradient(ellipse at 50% 40%, #14141f 0%, #0a0a0f 70%); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 28px; text-align: center; opacity: 1; transition: opacity 0.6s ease; }
+#wonder-overlay.hiding { opacity: 0; pointer-events: none; }
+#wonder-eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 4px; color: var(--gold); text-transform: uppercase; margin-bottom: 22px; }
+#wonder-age-step, #wonder-reveal-step { width: 100%; max-width: 420px; }
+#wonder-reveal-step { display: none; }
+#wonder-q { font-family: var(--font-disp); font-size: 24px; font-weight: 700; color: var(--text); line-height: 1.3; margin-bottom: 8px; }
+#wonder-q-sub { font-family: var(--font-ui); font-size: 13px; color: var(--text-dim); margin-bottom: 26px; line-height: 1.5; }
+#wonder-age-input { width: 140px; background: var(--surface); border: 1px solid var(--gold-dim); border-radius: 10px; color: var(--gold); font-family: var(--font-mono); font-size: 28px; text-align: center; padding: 12px; outline: none; }
+#wonder-age-input:focus { border-color: var(--gold); }
+.wonder-btn { display: inline-block; margin-top: 24px; background: var(--gold); color: #0a0a0f; font-family: var(--font-ui); font-size: 14px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; border: none; border-radius: 10px; padding: 14px 32px; cursor: pointer; transition: all 0.2s; }
+.wonder-btn:hover { background: #e8c060; transform: translateY(-1px); }
+.wonder-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+#wonder-headline { font-family: var(--font-disp); font-size: 26px; font-weight: 700; color: var(--text); line-height: 1.35; margin-bottom: 10px; }
+#wonder-headline em { font-style: italic; color: var(--gold); }
+#wonder-number { color: var(--gold); }
+#wonder-sub { font-family: var(--font-ui); font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 8px; }
+#wonder-skip { margin-top: 18px; background: none; border: none; color: var(--text-dim); font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px; cursor: pointer; text-decoration: underline; }
   </style>
 </head>
 <body>
 <div id="starfield"></div>
+
+<!-- FIRST-RUN WONDER OVERLAY -->
+<div id="wonder-overlay">
+  <div id="wonder-eyebrow">A Personal Experiment</div>
+
+  <div id="wonder-age-step">
+    <div id="wonder-q">How old are you?</div>
+    <div id="wonder-q-sub">Your body has been bending time since the day you were born. Let's find your number.</div>
+    <input type="number" id="wonder-age-input" placeholder="00" min="1" max="120" inputmode="numeric" />
+    <br />
+    <button class="wonder-btn" id="wonder-reveal-btn" disabled>Reveal</button>
+    <br />
+    <button id="wonder-skip">skip</button>
+  </div>
+
+  <div id="wonder-reveal-step">
+    <div id="wonder-headline"></div>
+    <div id="wonder-number"></div>
+    <div id="wonder-sub"></div>
+    <button class="wonder-btn" id="wonder-enter-btn">Watch it happen →</button>
+  </div>
+</div>
+
 <div id="app">
 
   <!-- HEADER with home button -->
@@ -2449,6 +2490,77 @@ setInterval(() => checkAchievements(parseInt(localStorage.getItem('ec_streak')||
 document.getElementById('input-height').addEventListener('change', () => {
   if (parseFloat(document.getElementById('input-height').value) > 0) grantAchievement('height_set');
 });
+
+// ── FIRST-RUN WONDER OVERLAY ───────────────────────────────────────
+(function initWonder(){
+  const overlay = document.getElementById('wonder-overlay');
+  if (!overlay) return;
+
+  // Only show on the very first run. If seen before, remove immediately.
+  if (localStorage.getItem('ec_wonder_seen')) { overlay.remove(); return; }
+
+  const ageStep   = document.getElementById('wonder-age-step');
+  const revealStep= document.getElementById('wonder-reveal-step');
+  const ageInput  = document.getElementById('wonder-age-input');
+  const revealBtn = document.getElementById('wonder-reveal-btn');
+  const skipBtn   = document.getElementById('wonder-skip');
+  const enterBtn  = document.getElementById('wonder-enter-btn');
+  const headlineEl= document.getElementById('wonder-headline');
+  const numberEl  = document.getElementById('wonder-number');
+  const subEl     = document.getElementById('wonder-sub');
+  const es = CUR_LANG() === 'es';
+
+  // Localize the static copy
+  document.getElementById('wonder-eyebrow').textContent = es ? 'Un Experimento Personal' : 'A Personal Experiment';
+  document.getElementById('wonder-q').textContent = es ? '¿Cuántos años tienes?' : 'How old are you?';
+  document.getElementById('wonder-q-sub').textContent = es
+    ? 'Tu cuerpo ha estado curvando el tiempo desde el día en que naciste. Encontremos tu número.'
+    : 'Your body has been bending time since the day you were born. Let\'s find your number.';
+  revealBtn.textContent = es ? 'Revelar' : 'Reveal';
+  skipBtn.textContent = es ? 'omitir' : 'skip';
+  enterBtn.textContent = es ? 'Verlo suceder →' : 'Watch it happen →';
+
+  function finish() {
+    localStorage.setItem('ec_wonder_seen', '1');
+    overlay.classList.add('hiding');
+    setTimeout(() => overlay.remove(), 650);
+  }
+
+  // Enable Reveal only when a sensible age is entered
+  ageInput.addEventListener('input', () => {
+    const v = parseInt(ageInput.value);
+    revealBtn.disabled = !(v >= 1 && v <= 120);
+  });
+  ageInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !revealBtn.disabled) revealBtn.click(); });
+
+  revealBtn.addEventListener('click', () => {
+    const age = parseInt(ageInput.value);
+    if (!(age >= 1 && age <= 120)) return;
+
+    // Persist the age so the app's lifetime features can use it (free path).
+    userAgeYears = age;
+    localStorage.setItem('ec_age', String(age));
+
+    // Compute the personal lifetime gap at standing height (the wonder number).
+    // calcDilationRate() is ns/s; multiply by seconds lived.
+    const lifetimeNs = calcDilationRate() * age * 365.25 * 24 * 3600;
+
+    headlineEl.innerHTML = es
+      ? 'Tu cabeza es <em>más vieja</em> que tus pies.'
+      : 'Your head is <em>older</em> than your feet.';
+    numberEl.innerHTML = '<span style="font-family:var(--font-mono);font-size:30px;">' + formatNs(lifetimeNs) + '</span>';
+    subEl.textContent = es
+      ? 'Eso es cuánto se ha adelantado tu cabeza en ' + age + ' años — y nunca se detiene. Obsérvalo ahora.'
+      : 'That\'s how far your head has pulled ahead in ' + age + ' years — and it never stops. Watch it now.';
+
+    ageStep.style.display = 'none';
+    revealStep.style.display = 'block';
+    if (navigator.vibrate) navigator.vibrate(30);
+  });
+
+  skipBtn.addEventListener('click', finish);
+  enterBtn.addEventListener('click', finish);
+})();
 </script>
 <script>
 if ('serviceWorker' in navigator) {

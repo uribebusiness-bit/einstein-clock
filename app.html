@@ -1035,10 +1035,21 @@ async function restoreProFromPlay(silent) {
 }
 
 // On startup inside the Play app: silently re-verify ownership.
-// Restores Pro after reinstall, new device, or cleared data.
-if (playBillingAvailable()) {
-  window.addEventListener('load', () => { restoreProFromPlay(true); refreshProPrice(); });
-}
+  // Restores Pro after reinstall, new device, or cleared data.
+  // Poll briefly because the Play Billing bridge can attach after load.
+  (function waitForBillingThenRestore(){
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts++;
+      if (playBillingAvailable()) {
+        clearInterval(timer);
+        restoreProFromPlay(true);
+        refreshProPrice();
+      } else if (attempts >= 20) {
+        clearInterval(timer);
+      }
+    }, 500);
+  })();
 
 function openProModal() { document.getElementById('pro-modal').classList.add('open'); }
 function closeProModal() { document.getElementById('pro-modal').classList.remove('open'); }

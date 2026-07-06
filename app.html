@@ -428,7 +428,7 @@
 #wonder-headline em { font-style: italic; color: var(--gold); }
 #wonder-number { color: var(--gold); }
 #wonder-sub { font-family: var(--font-ui); font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 8px; }
-#wonder-skip { margin-top: 18px; background: none; border: none; color: var(--text-dim); font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px; cursor: pointer; text-decoration: underline; }
+#wonder-skip, #wonder-back { margin-top: 18px; background: none; border: none; color: var(--text-dim); font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px; cursor: pointer; text-decoration: underline; }
 /* ── STAGE 2: WATCH-IT-HAPPEN ANIMATION ── */
 #wonder-watch-step { display: none; width: 100%; max-width: 460px; }
 #wonder-watch-speed { font-family: var(--font-mono); font-size: 12px; letter-spacing: 2px; color: var(--gold); text-transform: uppercase; margin-bottom: 20px; min-height: 16px; opacity: 0; transition: opacity 0.4s; }
@@ -469,7 +469,9 @@
     <div id="wonder-headline"></div>
     <div id="wonder-number"></div>
     <div id="wonder-sub"></div>
-    <button class="wonder-btn" id="wonder-enter-btn">Watch it happen →</button>
+<button class="wonder-btn" id="wonder-enter-btn">Watch it happen →</button>
+    <br />
+    <button id="wonder-back">← back</button>
   </div>
 
   <div id="wonder-watch-step">
@@ -1152,10 +1154,10 @@ if (!isPro && !localStorage.getItem('ec_pro_hint_shown')) {
 // Real experiments ranked by fractional rate gh/c² (dimensionless).
 // hM = height span each experiment resolved time dilation across.
 const RANK_EXPERIMENTS = [
-  { name: 'the 2022 JILA millimeter clock', short: 'JILA 2022', hM: 0.001, year: 2022 },
-  { name: 'the 2010 NIST one-foot experiment', short: 'NIST 2010', hM: 0.33, year: 2010 },
-  { name: 'the 1959 Pound–Rebka Harvard tower', short: 'Pound–Rebka 1959', hM: 22.5, year: 1959 },
-  { name: 'the 2020 Tokyo Skytree clock', short: 'Tokyo Skytree 2020', hM: 450, year: 2020 },
+  { name: 'the 2022 JILA millimeter clock',  name_es: 'el reloj milimétrico JILA de 2022',      short: 'JILA 2022',      hM: 0.001, year: 2022 },
+  { name: 'the 2010 NIST one-foot experiment', name_es: 'el experimento de un pie del NIST de 2010', short: 'NIST 2010',      hM: 0.33,  year: 2010 },
+  { name: 'the 1959 Pound–Rebka Harvard tower', name_es: 'la torre Pound–Rebka de Harvard de 1959', short: 'Pound–Rebka 1959', hM: 22.5,  year: 1959 },
+  { name: 'the 2020 Tokyo Skytree clock',    name_es: 'el reloj del Tokyo Skytree de 2020',      short: 'Tokyo Skytree 2020', hM: 450,   year: 2020 },
 ];
 function fracRateForHeightM(hM) { return (G * hM) / (C * C); } // dimensionless s/s
 let rankNextToastIdx = -1; // tracks last journey threshold we celebrated
@@ -1192,9 +1194,9 @@ function updateRank() {
     return;
   }
 const topPassed = RANK_EXPERIMENTS[passed - 1];
-  headlineEl.textContent = TT(
-    'Your body out-warps ' + topPassed.name + '.',
-    'Tu cuerpo supera ' + topPassed.name + '.');
+headlineEl.textContent = TT(
+      'Your body out-warps ' + topPassed.name + '.',
+      'Tu cuerpo supera ' + (topPassed.name_es || topPassed.name) + '.');
   // Journey bar: climb the user's ACCUMULATED gap toward "one day of the
   // next experiment's gap" — a real, multi-day target.
   if (!nextExp) {
@@ -1286,14 +1288,16 @@ function updateLifetime() {
   if (!userAgeYears||userAgeYears<=0) { elLifeVal.textContent=TT('Enter age above','Ingresa tu edad arriba'); return; }
   const ns = calcDilationRate()*userAgeYears*365.25*24*3600;
   elLifeVal.textContent = formatNs(ns);
-  elLifeSub.textContent = `In ${userAgeYears} years, your head aged ~${formatNs(ns)} more than your feet`;
+  elLifeSub.textContent = TT(
+      `In ${userAgeYears} years, your head aged ~${formatNs(ns)} more than your feet`,
+      `En ${userAgeYears} años, tu cabeza envejeció ~${formatNs(ns)} más que tus pies`);
 }
 
 function updateLandmarks() {
   if (!isPro) return;
   const r = calcDilationRate(), rd = r*86400;
   const gpsRatio = rd > 0 ? Math.round(38400/rd) : 0;
-  document.getElementById('lm-gps').textContent = rd > 0 ? '1/' + gpsRatio.toLocaleString() + ' of GPS drift' : '—';
+  document.getElementById('lm-gps').textContent = rd > 0 ? '1/' + gpsRatio.toLocaleString() + TT(' of GPS drift',' de deriva GPS') : '—';
   const lm = (dilationGapNs/NS_PER_S)*C;
   document.getElementById('lm-light').textContent = lm<1?(lm*1000).toFixed(2)+' mm':lm<1000?lm.toFixed(3)+' m':(lm/1000).toFixed(3)+' km';
   document.getElementById('lm-everest').textContent = ((G*EVEREST_M/(C*C))*NS_PER_S*86400).toFixed(2)+' ns/day';
@@ -1439,11 +1443,11 @@ document.getElementById('input-height').addEventListener('input', e => {
   const presets = document.querySelectorAll('.posture-preset');
   if (!slider) return;
 
-  function describe(p){
-    if (p >= 90) return '🧍 Standing — full height';
-    if (p >= 35) return '🪑 Reclined / sitting';
-    if (p >  5)  return '↘ Partly reclined';
-    return '🛌 Lying flat — head level with feet';
+function describe(p){
+    if (p >= 90) return TT('🧍 Standing — full height','🧍 De pie — altura completa');
+    if (p >= 35) return TT('🪑 Reclined / sitting','🪑 Reclinado / sentado');
+    if (p >  5)  return TT('↘ Partly reclined','↘ Parcialmente reclinado');
+    return TT('🛌 Lying flat — head level with feet','🛌 Acostado — cabeza al nivel de los pies');
   }
   function refreshPostureReadout(){
     rateEl.textContent = (calcDilationRate()*3600).toFixed(6);
@@ -2235,15 +2239,15 @@ document.getElementById('ach-toggle').addEventListener('click', () => {
   const W = canvas.width, H = canvas.height;
 
   // Stages: unlocked by days of streak
-  const STAGES = [
-    { name: 'Quantum Speck',    minDays: 0,  color: '#4a9eff', desc: 'A single point of quantum energy, flickering at the edge of existence.' },
-    { name: 'Time Wisp',        minDays: 2,  color: '#7ab8ff', desc: 'A ghostly wisp that bends light around it as it drifts through spacetime.' },
-    { name: 'Dilation Sprout',  minDays: 5,  color: '#4ade80', desc: 'Life stirs. Tendrils of relativistic energy reach outward.' },
-    { name: 'Warp Bloom',       minDays: 10, color: '#c9a84c', desc: 'A radiant bloom of distorted time, fed by the gap your own body opens between head and feet.' },
-    { name: 'Relativity Moth',  minDays: 20, color: '#e879f9', desc: 'Wings of pure spacetime. It leaves a trail of frozen moments behind it.' },
-    { name: 'Singularity Fox',  minDays: 35, color: '#f97316', desc: 'Cunning and ancient. Its eyes contain entire collapsed stars.' },
-    { name: 'Einstein Dragon',  minDays: 60, color: '#c9a84c', desc: 'The final form. A creature of legend, born from decades of dilation.' },
-  ];
+const STAGES = [
+  { name: 'Quantum Speck',   name_es: 'Mota Cuántica',        minDays: 0,  color: '#4a9eff', desc: 'A single point of quantum energy, flickering at the edge of existence.', desc_es: 'Un solo punto de energía cuántica, parpadeando al borde de la existencia.' },
+  { name: 'Time Wisp',       name_es: 'Halo del Tiempo',      minDays: 2,  color: '#7ab8ff', desc: 'A ghostly wisp that bends light around it as it drifts through spacetime.', desc_es: 'Un halo fantasmal que curva la luz a su alrededor mientras vaga por el espacio-tiempo.' },
+  { name: 'Dilation Sprout', name_es: 'Brote de Dilatación',  minDays: 5,  color: '#4ade80', desc: 'Life stirs. Tendrils of relativistic energy reach outward.', desc_es: 'La vida despierta. Zarcillos de energía relativista se extienden hacia afuera.' },
+  { name: 'Warp Bloom',      name_es: 'Flor del Alabeo',      minDays: 10, color: '#c9a84c', desc: 'A radiant bloom of distorted time, fed by the gap between head and feet.', desc_es: 'Una flor radiante de tiempo distorsionado, alimentada por la brecha entre la cabeza y los pies.' },
+  { name: 'Relativity Moth', name_es: 'Polilla de Relatividad', minDays: 20, color: '#e879f9', desc: 'Wings of pure spacetime. It leaves a trail of frozen moments behind it.', desc_es: 'Alas de puro espacio-tiempo. Deja tras de sí un rastro de momentos congelados.' },
+  { name: 'Singularity Fox', name_es: 'Zorro de Singularidad', minDays: 35, color: '#f97316', desc: 'Cunning and ancient. Its eyes contain entire collapsed stars.', desc_es: 'Astuto y ancestral. Sus ojos contienen estrellas enteras colapsadas.' },
+  { name: 'Einstein Dragon', name_es: 'Dragón de Einstein',   minDays: 60, color: '#c9a84c', desc: 'The final form. A creature of legend, born from decades of dilation.', desc_es: 'La forma final. Una criatura de leyenda, nacida de décadas de dilatación.' },
+];
 
   let t = 0; // animation time
   let creatureRafId = null;
@@ -2465,12 +2469,12 @@ document.getElementById('ach-toggle').addEventListener('click', () => {
     }
 
     document.getElementById('creature-days').textContent = Math.max(days, streak);
-    document.getElementById('creature-stage-label').textContent = stage.name;
-    document.getElementById('creature-status').textContent = stage.desc;
+    document.getElementById('creature-stage-label').textContent = TT(stage.name, stage.name_es || stage.name);
+    document.getElementById('creature-status').textContent = TT(stage.desc, stage.desc_es || stage.desc);
     document.getElementById('creature-progress-fill').style.width = pct + '%';
-    document.getElementById('creature-stage-name').textContent = 'Stage ' + (stageIdx+1);
+    document.getElementById('creature-stage-name').textContent = TT('Stage ', 'Etapa ') + (stageIdx+1);
     const daysLeft = nextStage ? Math.max(1, nextStage.minDays - streak) : 0;
-    document.getElementById('creature-next-label').textContent = nextStage ? '→ ' + daysLeft + (daysLeft === 1 ? ' more day to evolve' : ' more days to evolve') : 'MAX EVOLUTION';
+    document.getElementById('creature-next-label').textContent = nextStage ? '+ ' + daysLeft + (daysLeft === 1 ? TT(' more day to evolve',' día más para evolucionar') : TT(' more days to evolve',' días más para evolucionar')) : TT('MAX EVOLUTION','EVOLUCIÓN MÁX');
     document.getElementById('cs-streak').textContent = streak;
     document.getElementById('cs-stage').textContent = stageIdx + 1;
     document.getElementById('cs-visits').textContent = visits;
@@ -2604,6 +2608,15 @@ document.getElementById('input-height').addEventListener('change', () => {
   });
 
   skipBtn.addEventListener('click', finish);
+  const backBtn = document.getElementById('wonder-back');
+  if (backBtn) {
+    backBtn.textContent = es ? '← atrás' : '← back';
+    backBtn.addEventListener('click', () => {
+      revealStep.style.display = 'none';
+      ageStep.style.display = 'block';
+      ageInput.focus();
+    });
+  }
 
   // ── STAGE 2: "Watch it happen" runs the animation, then offers Enter ──
   const watchStep   = document.getElementById('wonder-watch-step');
@@ -2769,6 +2782,12 @@ const TXT_ES = {
   "Rate at 29,032 ft elevation (8,849 m)": "Tasa a 29,032 pies de elevación (8,849 m)",
   "Human Lifespan (80 yrs)": "Vida Humana (80 años)",
   "Total head-feet gap over a full life": "Brecha total cabeza-pies en toda una vida",
+  "Posture Calibration": "Calibración de Postura",
+  "Your gap depends on how high your head sits above your feet. Change your posture and watch the physics respond.": "Tu brecha depende de qué tan alto está tu cabeza sobre tus pies. Cambia tu postura y observa cómo responde la física.",
+  "🛌 Lying flat": "🛌 Acostado",
+  "🪑 Sitting": "🪑 Sentado",
+  "🧍 Standing": "🧍 De pie",
+  "Unlock": "Desbloquear",
   "🔥 Daily Streak": "🔥 Racha Diaria",
   "⚛ Today's Relativity Fact": "⚛ Dato de Relatividad de Hoy",
   "Time Dilation Simulator": "Simulador de Dilatación del Tiempo",

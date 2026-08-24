@@ -2393,31 +2393,66 @@ const STAGES = [
   }
 
   function drawStage5(t, col) {
-    // Singularity fox — stylized fox face
+    // Singularity fox — full body, shaded, connected tail
     ctx.save(); ctx.translate(W/2, H/2);
-    const bob = Math.sin(t*1.5)*4;
+    const bob = Math.sin(t*1.5)*3;
     ctx.translate(0, bob);
-    // ears
+
+    function bodyGrad(cx, cy, r) {
+      const g = ctx.createRadialGradient(cx-r*0.3, cy-r*0.3, r*0.1, cx, cy, r);
+      g.addColorStop(0, '#ffb066');
+      g.addColorStop(1, col);
+      return g;
+    }
+
+    // tail (behind body, connects at the hip)
+    ctx.fillStyle = bodyGrad(40, 10, 34);
+    ctx.beginPath();
+    ctx.moveTo(14, 40);
+    ctx.quadraticCurveTo(55, 45, 58, 5);
+    ctx.quadraticCurveTo(60, -20, 42, -22);
+    ctx.quadraticCurveTo(50, -5, 46, 15);
+    ctx.quadraticCurveTo(40, 35, 14, 40);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath(); ctx.ellipse(44,-14,8,10,0.3,0,Math.PI*2); ctx.fill();
+
+    // body
+    ctx.fillStyle = bodyGrad(0, 35, 26);
+    ctx.beginPath(); ctx.ellipse(0,35,22,26,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath(); ctx.ellipse(0,42,12,16,0,0,Math.PI*2); ctx.fill();
+
+    // ears (mirrored exactly)
     ctx.fillStyle = col;
-    ctx.beginPath(); ctx.moveTo(-22,-30); ctx.lineTo(-38,-60); ctx.lineTo(-8,-35); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(22,-30);  ctx.lineTo(38,-60);  ctx.lineTo(8,-35);  ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-20,-28); ctx.lineTo(-32,-58); ctx.lineTo(-6,-34); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(20,-28);  ctx.lineTo(32,-58);  ctx.lineTo(6,-34);  ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath(); ctx.moveTo(-18,-33); ctx.lineTo(-26,-50); ctx.lineTo(-11,-35); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(18,-33);  ctx.lineTo(26,-50);  ctx.lineTo(11,-35);  ctx.closePath(); ctx.fill();
+
     // head
-    ctx.beginPath(); ctx.ellipse(0,-15,28,25,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = bodyGrad(0, -14, 26);
+    ctx.beginPath(); ctx.ellipse(0,-14,26,23,0,0,Math.PI*2); ctx.fill();
+
     // muzzle
-    ctx.fillStyle = '#f97316';
-    ctx.beginPath(); ctx.ellipse(0,8,14,12,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff8ee';
+    ctx.beginPath(); ctx.ellipse(0,4,13,11,0,0,Math.PI*2); ctx.fill();
+
     // eyes — glowing
-    const eyeGlow = 0.7+Math.sin(t*2)*0.3;
+    const eyeGlow = 0.75+Math.sin(t*2)*0.25;
     ctx.fillStyle = `rgba(74,158,255,${eyeGlow})`;
-    ctx.beginPath(); ctx.arc(-10,-18,5,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(10,-18,5,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-9,-17,5,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(9,-17,5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath(); ctx.arc(-10.5,-18.5,1.3,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7.5,-18.5,1.3,0,Math.PI*2); ctx.fill();
+
     // nose
     ctx.fillStyle = '#1a1a2e';
-    ctx.beginPath(); ctx.arc(0,5,3,0,Math.PI*2); ctx.fill();
-    // tail hint
-    ctx.strokeStyle = col; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.globalAlpha = 0.5;
-    ctx.beginPath();
-    ctx.moveTo(25,20); ctx.quadraticCurveTo(55,0,50,-20); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0,3,3,2.2,0,0,Math.PI*2); ctx.fill();
+
     ctx.restore();
   }
 
